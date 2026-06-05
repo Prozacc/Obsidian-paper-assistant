@@ -1,0 +1,363 @@
+{
+  "pdf": "C:\\Users\\14870\\Documents\\paper\\ERAN.pdf",
+  "title": "Learning evolving relations for multivariate time series forecasting",
+  "authors": [
+    "including healthcare",
+    "but it is a",
+    "that is capable",
+    "evolves over time",
+    "using a temporal attentional convolution",
+    "elvoving graph structure",
+    "energy consumption"
+  ],
+  "abstract": "Multivariate time series forecasting is essential in various ﬁelds,\nchallenging task due to the strong dynamics in both intra-channel\nand inter-channel relations (the relationships between variables),\nproposes ERAN (Evolving Relational Attention Network), a framework\nto capture such dynamics of these relations. On the one hand,\nevolves over time, modeled using a recurrent neural network. On\nusing a temporal attentional convolution, which captures the local\nelvoving graph structure and the temporal attentional convolution\nrelations. The model is experimented on a large number of real-life\nCOVID-19 transmission data. The experimental results show a\nmultivariate time series forecasting particularly for non-stationary",
+  "keywords": [
+    "Time series forecasting · Multivariate time series"
+  ],
+  "sections": [
+    {
+      "heading": "Document",
+      "text": "Applied Intelligence (2024) 54:3918–3932\nhttps://doi.org/10.1007/s10489-023-05220-0\nLearning evolving relations for multivariate\nBinh Nguyen-Thai1,2 · Vuong Le3 · Ngoc-Dung T. Tieu4,5\nAccepted: 6 December 2023 / Published online: 15 March 2024\n© The Author(s) 2024",
+      "page_start": 1,
+      "page_end": 1
+    },
+    {
+      "heading": "Abstract",
+      "text": "Multivariate time series forecasting is essential in various ﬁelds,\nchallenging task due to the strong dynamics in both intra-channel\nand inter-channel relations (the relationships between variables),\nproposes ERAN (Evolving Relational Attention Network), a framework\nto capture such dynamics of these relations. On the one hand,\nevolves over time, modeled using a recurrent neural network. On\nusing a temporal attentional convolution, which captures the local\nelvoving graph structure and the temporal attentional convolution\nrelations. The model is experimented on a large number of real-life\nCOVID-19 transmission data. The experimental results show a\nmultivariate time series forecasting particularly for non-stationary\nKeywords Time series forecasting · Multivariate time series\nAttention mechanism",
+      "page_start": 1,
+      "page_end": 1
+    },
+    {
+      "heading": "1 Introduction",
+      "text": "In this paper, we study the problem of multivariate time\nseries forecasting, which is to predict the future data points\ngiven previous data of time series. Forecasting time series is\ncritical for many real-life applications, including predicting\ntrafﬁc ﬂow, electricity consumption, and COVID transmis-\nsion. Accurate forecasting is crucial for making informed\ndecisions and planning for the future.\nMultivariate time series forecasting is challenging due\nto the complexity in both intra- and inter-channel rela-\ntions. Intra-channel relations involve the temporal patterns\nwithin individual variables, determining the dependencies\nof future values on prior ones. Intra-channel relations can\nbe highly dynamic, particular in non-stationary time series,\nmaking it difﬁcult to forecast. For example, in COVID-19\nThe source code is available at the following URL: https://zenodo.org/\nrecords/10528296.",
+      "page_start": 1,
+      "page_end": 1
+    },
+    {
+      "heading": "B Binh Nguyen-Thai",
+      "text": "thaibinh.nguyen@uws.ac.uk; nguyenthaibinh@gmail.com\nExtended author information available on the last page of the article\n1 3\ntime series forecasting\n· Truyen Tran6 · Svetha Venkatesh6 · Naeem Ramzan1\nincluding healthcare and trafﬁc management, but it is a\nrelations (temporal patterns within individual variables)\nwhich can evolve over time with abrupt changes. This paper\nfor multivariate time series forecasting, that is capable\nERAN represents inter-channel relations with a graph which\nthe other hand, ERAN represents the intra-channel relations\ntemporal dependencies adaptively with the input data. The\nare intergrated in a uniﬁed model to capture both types of\ndatasets including trafﬁc ﬂows, energy consumption, and\nsigniﬁcant improvement over the state-of-the-art methods in\ndata.\nforecasting · Dynamic graph neural networks ·\ndata, changes in government policies may impact COVID-19\ntransmission in a city, resulting in non-stationarity in tempo-\nral patterns and making it challenging to predict new cases.\nInter-channel relations, on the other hand, refer to the depen-\ndencies between pairs of variables. Again, these relations\ncan evolve over time. For instance, the correlation between\nthe spread of COVID-19 among cities or countries may vary\nover time due to adaptive government policies such as social\ndistancing or border closures. Therefore, accurately captur-\ning the dynamics of these types of relations is essential for\nmultivariate time series forecasting.\nTime series forecasting have been extensively studied in\nconventional models such as autoregressive model (AR),\nmoving average model (MA), autoregressive integrated mov-\ning average (ARIMA) [15]. Recently, deep neural network-\nbased models, such as recurrent neural networks (RNNs)\n[7, 14], and convolutional neural networks (CNNs) [3],\nhave shown promising results due to their ability to cap-\nture nonlinear temporal patterns. These models represent the\ndependencies of future data points on previous data points\nusing a set of learnable parameters. However, since these\nparamerters are ﬁxed after training, they can only capture\nLearning evolving relations for multivariate time series forecasting\ninvariant temporal patterns, and therefore, are insufﬁcient\nto model time series with time-varying patterns, such as\nnon-stationary time series that are commonly observed in\nreality.\nTo model the inter-channel relations, recent works have\nbeen applying graph neural networks to multivariate time\nseries data. In this approach, a multivariate time series is\nviewed as a graph, with each variable represented as a node\nand the underlying correlations between variables repre-\nsented as connections between nodes. The graph can be either\npre-deﬁned or learned from data. By combining a graph neu-\nral network with a temporal model such as an RNN [2] or\na CNN [12, 34, 35], both types of relations can be modeled\nsimultaneously. The primary limitation of the this approach\nis its static graph structure, where a single graph is used\nthroughout the entire lifespan of the time series. However, the\nstatic graph structure is inadequate for capturing the evolving\nrelationships between variables over time, as the example of\nCOVID transmission above.\nA highly plausible path to tackle these challenges is via\nlearning the evolution of the spatio-temporal relations in\ntime series. Unlike entities in static data, time series vari-\nables have unique evolving lives throughout space-time. As\na series progresses, it changes its internal states and interacts\nwith other series at arbitrary time. Guided by these prin-\nciples, we introduce ERAN (Evolving Relational Attention\nNetwork), a novel method for modeling multivariate time\nseries. ERAN learns to extract the graph structure underly-\ning inter-channel relations at each time step. In ERAN, a\ngraph structure is represented by an adjacency matrix. The\nevolutionoftheadjacencymatricesismodelledbyarecurrent\nneural network, where the adjacency matrix at each time step\ndepends on that of the previous step and the current observed\ndata, allowing ERAN to accurately model the evolving inter-\nchannel relations in the data.\nOnce discovered, the dynamic graph structure guides a\nreasoning process that jointly captures the intra- and inter-\nchannel relations of a time series. This process happens\nwithin a multi-layer architectures that alternate between\ninter-channel relations by graph convolution network and\nintra-channel relations by a fused Temporal Attentional\nConvolution (TAC). This process results in a concrete rep-\nresentation of the observed time series which facilitates\nconvenient decoding into the future forecast.\nThe ERAN model stands out with its authentic and explicit\nmodeling of evolving relations in time series leading to the\neffective and stable forecasting process. These advantages\nare demonstrated through a comprehensive set of experi-\nments across multiple domains, including trafﬁc ﬂow, elec-\ntricity consumption, and COVID-19 transmission. ERAN\nconsistently outperforms existing state-of-the-art models on\nthese tasks. Analysis of the model reveals its effectiveness in\n3919\nexploring the underlying dynamic relations during the fore-\ncasting process.\nIn summary, we present the following innovations:\n• A method to model the dynamics of inter-channel rela-\ntions in multivariate time series, by learning a dynamic\ngraph underlying such relations, that evolves over time.\n• Temporalattentionalconvolution,aself-attentionmecha-\nnism operating on sliding windows, to model the dynam-\nics of intra-channel relations in multivariate time series.\n• Development of a framework for multivariate time series\nforecasting that concurrently captures the dynamics of\nintra- and inter-channel relations between variables.\n• Conducting extensive experiments on multiple real-\nworld datasets to demonstrate the effectiveness of explic-\nitly considering the dynamics of both relations in mul-\ntivariate time series forecasting, in particular, for non-\nstationary time series.",
+      "page_start": 1,
+      "page_end": 2
+    },
+    {
+      "heading": "2.1 Traditional time series forecasting",
+      "text": "Time series forecasting has been studied for decades. Tra-\nditional time series techniques are mainly based on the\nstatistical approach. These methods include the well-known\nautoregressive integrated moving average (ARIMA) [15],\nsupport vector regression (SVR) [25], random forest (RF)\n[10], vector autoregressive models (VARs) [15].\nARIMA is a generalisation of the autoregressive (AR)\nand and autoregresive moving average (ARMA) models [22].\nSVR [15] is a type of support vector machine that can per-\nform regression by ﬁnding a hyperplane that ﬁts the data with\nthe maximum margin. SVR can handle non-linear and high-\ndimensional data, and provide probabilistic forecasts. RF\n[10] is an ensemble learning method that can perform regres-\nsion by combining multiple decision trees that are trained on\ndifferent subsets of the data. RF can handle noisy and het-\nerogeneous data, and reduce the variance and overﬁtting of\nindividual trees.\nVector autoregresive models (VARs) extend AR and\nARMA to extract linear correlation between variables in\nmultivariate time series [15]. Nevertheless, traditional meth-\nods have several drawbacks. Firstly, they are linear models\nand hence cannot capture non-linear dependencies present in\ncomplex data. Secondly, these methods train time series indi-\nvidually, and therefore, they are not scalable to large-scale\ndatasetscontainingmillionsoftimeseries.Furthermore,they\ncannot leverage the common patterns shared between time\nseries in the data set, due to their individual training.\n1 3\n3920",
+      "page_start": 2,
+      "page_end": 3
+    },
+    {
+      "heading": "2.2 Deep learning-based time series forecasting",
+      "text": "Deep learning-based methods have recently shown promis-\ning results in time series forecasting by capturing non-linear\ndependencies in the data. Among these techniques, RNN and\nits variants LSTM and GRU [6, 7, 14], has been used, such\nas Deep AR [30], Deep State-Space Models (DSSM) [28],\nTimeGrad [29] to name a few. CNN-based models such as\nWaveNet [24], GluonTS [1] have also demonstrated their\neffectiveness in modeling time series data.\nRecently, transformers (e.g., [32]), renowned for their\nadeptness in modeling long-range dependencies and interac-\ntions within sequential data, have been increasingly utilised\nin time series forecasting [17, 19, 21, 33, 38]. LogSparse\nTransformer [19] proposes the LogSparse attention that to\nreduce the computation complexity of the original Trans-\nformer. Reformer [17]. Informer [38] proposes the sparsity\nof attention score through KL divergence estimation and pro-\nposes ProbSparse self-attention which achieves O(Llog L)\ncomplexity. Crossformer [37]. Temporal Fusion Transformer\n[21].\nThese models embed the observed multivariate time series\ninto a sequence of vectors in a shared hidden space, and\nuse RNN, CNN, or self-attention mechanisms to model\nthe sequence in the temporal axis. Since the variables are\nencoded in a shared hidden space, the inter-dependencies\nbetween variables are not modeled explicitly.",
+      "page_start": 3,
+      "page_end": 3
+    },
+    {
+      "heading": "2.3 Graph neural network for time series forecasting",
+      "text": "Graph neural networks (GNN) have been showing great\nsuccesses in structured data like social network, protein net-\nworks, chemical networks, and human skeleton data. The\nmain goal of a GNN is to capture the dependencies of nodes\nvia a graph structure. GNN can learn the representation of a\nnode by leveraging not only that node’s feature but also its\nneighbor nodes. Various techniques have been proposed for\nthis purpose such as graph convolution [4, 8, 16] and message\npassing [11, 23, 27].\nInspired by the success of the GNN in other domains,\nresearchers have recently applied GNN to multivariate\ntime series such as Graph Wavenet (GWNet) [34], Spatio-\nTemporal Graph Convolutional Networks (STGCN) [36]\nAttention-based Spatial-temporal Graph Convolutional Net-\nwork (ASTGCN) [12]. A multivariate time series can be seen\nas a graph where variables correspond to nodes of the graph,\nand the edges of the graph are the underlying dependencies\nbetween the variables. By combining GNN and a tempo-\nral model, e.g., a RNN or a CNN, these works can learn\ntime series representations that capture both intra- and inter-\nchannel relations. However, these models need a pre-deﬁned\ngraph, which is not always readily available.\n1 3\nB. Nguyen-Thai et al.\nTo enable the GNN on data where a pre-deﬁned graph is\nunavailable, researchers have proposed to learn latent struc-\nture from data. In time series, a number of models have\nbeen proposed to learn an underlying graph from data such\nas MTGNN [35], Adaptive Graph Convolutional Recurrent\nNetwork (AGCRN) [2], Spectral Temporal Graph Neural\nNetwork (StemGNN) [5]. The main disadvantage is that they\nuse a static graph structure over the entire time span of a\ntime series, thus cannot capture the dynamic dependencies\nbetween variables.",
+      "page_start": 3,
+      "page_end": 3
+    },
+    {
+      "heading": "3.1 Problem formulation",
+      "text": "A multivariate time series is represented by a matrix Y =\n[X1, X2, . . . , XT ] ∈RN×T , where T is the number of\ntime steps and N is the number of variables. In this nota-\ntion, Xt ∈RN represents a slice of Y observed at time\nstep t. Given a historical window of L observed time steps,\nY o = XT −L+1, XT −L+2, . . . , XT , and a forecast horizon\nτ, the task is to predict the values of the next τ steps in the\nfuture: Y f = XT +1, XT +2, . . . , XT . Often, historical\n+τ\ndata may be associated with covariates such as date, time,\nand location. Therefore, we assume that the input data for\nforecasting Y f is S = ST −L+1, ST −L+2, . . . , ST , where\nSt ∈RDin×N is obtained by concatenating Xt and its covari-\nates, Din is the dimensionality of the input features. Our goal\nis to build a model F that predicts Y f from S.\nˆY f = F(S, ) (1)\nHere, ˆY f ∈RN×τ is the predicted values in the forecasting\nhorizon, and is the set of all model parameters.",
+      "page_start": 3,
+      "page_end": 3
+    },
+    {
+      "heading": "3.2 Model overview",
+      "text": "We propose a novel approach to address the multivariate time\nseries forecasting problem by leveraging a dynamic graph\nGt = (V, At) that captures the interactions between the vari-\nables at each time step of the series. The set of nodes V is\nof size V = N, and At ∈RN×N is the adjacency matrix\nwhose entries reﬂect the strengths of the relations between\npairs of variables at the t-th time step. It is worth noting that\nthis graph is not pre-deﬁned. Instead, our proposed model\nwill learn to extract the node features and generate the cor-\nresponding adjacency matrix At and its evolution over time\nsteps.\nThe proposed approach is implemented in ERAN, whose\noverall architecture is illustrated in Fig. 1a. Firstly, the mul-\ntivariate time series is input into a Evolving Graph Learning\nlayer (EGL) to generate a sequence of adjacency matrices,\nLearning evolving relations for multivariate time series forecasting\nFig. 1 (a) The high level\narchitecture of ERAN model.\nThe ERAN is composed of an\nEvolving Graph Learning layer\n(EGL) which learns to generate\nthe evolving adjacency matrices,\nand multiple ERAN blocks\nstacked together. Residual\nconnections and skips\nconnections are used to prevent\nvanishing gradient. (b) An\nERAN block consists of two\nmain components: a Temporal\nAttentional Convolution (TAC)\nand a Temporal Graph\nConvolution (TGC) which are\nintegrated to capture the intra-\nand inter-channel relations\none for each time step. This sequence of matrices serves\nas the input for the ERAN layer, which is composed of\nmultiple ERAN blocks stacked together. An ERAN block is\npresented in Fig. 1b. Each ERAN block comprises two main\ncomponents: a Temporal Attentional Convolution (TAC) and\na Temporal Graph Convolution (TGC), which jointly cap-\nture both intra- and inter-channel relations. Furthermore,\neach ERAN block includes a LayerNorm and Dropout layer\nto prevent overﬁtting. To prevent vanishing gradients and\naccelerate training, residual and skip connections are utilised\nthroughout all ERAN blocks.\nEach ERAN block has two output branches: (i) the resid-\nual output R(i), which serves as part of the input for the\nnext ERAN block, and (ii) the skip output C(i), which is fed\ndirectly to the output layer (described in the next paragraph)\nto contribute to the forecast.\nThe output layer utilises the skip connection outputs of the\nERAN blocks to generate future values. The model is trained\ntoproducethemostaccuratepredictionofthesefuturevalues.\nThe Mean Absolute Error is chosen as the objective function\nto train ERAN, which is computed as follows:",
+      "page_start": 3,
+      "page_end": 4
+    },
+    {
+      "heading": "1 T",
+      "text": "L( ˆY f , Y f , ) = | ˆY f −Y f | (2)\nN.τ\nt=1\n3921\nwhere Y f is the ground truth of the forecasting horizon, ˆY f\nare the values predicted by the model, and represents all\nmodel parameters.\nThe detailed design of these components is described in\nthe subsequent sections.",
+      "page_start": 4,
+      "page_end": 4
+    },
+    {
+      "heading": "3.3 EGL: Evolving Graph Learning layer",
+      "text": "In a GNN-based method, the adjacency matrix plays a cen-\ntral role in learning the relationships between individual\nvariables. In deterministic systems, this matrix can be pre-\ndeﬁned based on human knowledge. For instance, in trafﬁc\nﬂow data, the adjacency matrix can be constructed from the\nroad network and the distances between the sensors. How-\never, in many cases, such a graph is not readily available or\ntoo complex to be deﬁned manually. Early learning-based\nworks proposed generating such a structure from the data\nwithout prior knowledge of the graph [2, 5, 35]. However,\nthese works generate a single adjacency matrix to cover the\nrelations between variables throughout the entire time series,\nand thus they are not adaptive to the dynamics of the data.\nIn contrast, EGL learns a series of adjacency matrices, each\nfor a time step, enabling the model to capture the evolving\nrelationships of individual variables.\nNow we present how EGL works. Our aim is to design\na recurrent process that generates At, the adjacency matrix\n1 3\n3922\nat time step t, conditioned on the previous step’s adjacency\nmatrix At−1 and current input value Xt. However, directly\nmodeling the values of the adjacency matrices would require\nO N 4 computational complexity and memory consump-\ntion1, which is remarkably expensive for a large network.\nTo reduce the computational complexity, we factorise the\nmatrix into two low-rank matrices Ht, H′t ∈Rde×N, where\nde ≪N, holding the states of N variables at time step t.\nInstead of generating At, EGL learns to generate Ht and H′\nt\nand approximate At by At = g Ht, H′ . In our implemen-\nt\ntation, we choose the function At = relu tanh H⊤ H′ .\nt t\nBy using the relu and tanh function, we aim to make the\nmatrix At sparse, forcing the model to retain only important\nrelations. The beneﬁts of this factorisation are not limited to\nreducing computational complexity but also to maintaining\nthe low-rank properties of At.\nWe use a GRU (Gated Recurrent Unit), a type of recur-\nrent neural network, to model the evolution of Ht, where\nHt is the hidden state of the GRU, and the layer input is\nthe GRU’s input. Similarly, we use another GRU to model\nthe evolution of H′ . Speciﬁcally, ﬁrst, we embed Xt into\nt\nembedding vectors Et and E′ using linear transformations\nt\nEt = WE Xt ∈Rde×N and E′ = W ′ Xt ∈Rde×N, where\nt E\nEt, E′ ∈Rde×N are learnable parameters. Then, Et and E′\nt t\nare fed into the GRU to compute hidden states Ht and H′ as\nt\nfollows:\nHt = GRU (Et, Ht−1) , (3)\nH′ = GRU E′t, H′ , (4)\nt t−1\nSince a GRU originally operates on vectors, the GRU’s\ndesign need to be updated to operate on matrices Xt, Ht, and\nH′ . For this purpose, we use the same approach presented\nt\nin [26]. In detail, the GRU’s computation is presented in\nAlgorithm 1. Here, W Z, WR,UZ,UR, WH, UH, BZ, BR,\nBH ∈Rde×de are learnable parameters.\nAlgorithm 1 Matrix GRU.",
+      "page_start": 4,
+      "page_end": 5
+    },
+    {
+      "heading": "9: return Ht",
+      "text": "The dynamic adjacency matrices built from this process\ncontain the evolving relational structure between variables",
+      "page_start": 5,
+      "page_end": 5
+    },
+    {
+      "heading": "1 Flattening the matrix results in a vector of length N 2, and mapping",
+      "text": "between two consecutive matrices requires N 4 operations.\n1 3\nB. Nguyen-Thai et al.\nand will be used to extract the intra- and inter-channel rela-\ntions, which will be described in Section 3.4.",
+      "page_start": 5,
+      "page_end": 5
+    },
+    {
+      "heading": "3.4 ERAN block",
+      "text": "The ERAN layer layer consists of multiple ERAN blocks\nwhich are stacked together to form a multi-layer network\nwith skip connection. Each ERAN block is designed to cap-\nture the intra- and inter-channel relations by employing a\nTemporal Attentional Convolution (TAC) and a Temporal\nGraph Convolution (TGC). In this section, we will introduce\nthe motivation behind an ERAN block and its architecture.",
+      "page_start": 5,
+      "page_end": 5
+    },
+    {
+      "heading": "3.4.1 TAC: Temporal Attentional Convolution Module",
+      "text": "For local temporal pattern modeling, convolutional neural\nnetworks (CNNs) are a common choice to ﬁnd local motifs.\nCNNs learn a kernel to operate on a sliding window and\ncompute the output from input within a context. In CNN,\none unique kernel is applied for the whole lifetime of a time\nseries. However, a unique kernel is insufﬁcient to capture the\ntemporal dynamics where different parts of the same time\nseries may have changing temporal patterns. Furthermore,\nonce learned, the kernel is ﬁxed, thus it is poor at capturing\nthe temporal patterns when the test set and training set have\ndifferent patterns.\nIn order to model such temporal dynamics, here we design\ntemporal attentional convolution (TAC). Unlike CNN, which\naggregates input within a local context to compute the output\nusing a ﬁxed kernel, TAC employs a self-attention mecha-\nnism to learn to focus on important input when computing\nthe output, enabling it to capture changes in temporal patterns\nover time. Attention mechanisms with the ability to learn to\nfocus on important parts within a context have shown their\neffectiveness in natural language processing and computer\nvision. We extend that concept to multivariate time series\nwhere we need to deal with N sequences corresponding to\nN variables.\nFor each sequence, the data point at each time step\nwill attend to its neighbors of the same sequence, within\na given window with of size w (w = 3, 5, 7, . . . ) where\neach time step attends w time steps each size and itself.\nSpeciﬁcally, at time step t, the attention region is Nw (t) =\nt′, t −w−1 ≤t′ ≤t + w−1 . This approach is in contrast\n2 2\nto global attention, where each data point attends to all data\npoints across all time steps. By limiting attention to a local\nregion, the proposed mechanism reduces the computational\ncomplexity and memory consumption required for process-\ning the sequence data. An example of TAC operating in a\nwindow of size w = 5 is illustrated in Fig. 2.\nGiven the input xi,t of the i-th series at time step t, a\nsingle-headed attention for the output feature zi,t ∈Rdout is\nLearning evolving relations for multivariate time series forecasting\nFig. 2 An example of the TAC module over a window of size w = 5\ncomputed as:\nzi,t = q⊤ i,tki,t′ + q⊤ i,tαt′−t vi,t′ (5)\nt′∈Nw(t)\nwhere the queries qi,t, keys ki,t′, and values vi,t′ are lin-\near transformations of xi,t and its neighbourhoods, and are\ncomputed as follows.\nqi,t = WQxi,t, ki,t′ = WK xi,t′, vi,t′ = WV xi,t′ (6)\nHere, WQ, WK , WV ∈Rdout×din are learnable parameters,\nand αt′−t ∈Rdout represents the relational position embed-\nding associated with the neighborhood t′ of t. The relational\nposition embedding is introduced here to capture the tempo-\nral information of the input. It was introduced in [31], where\nits effectiveness over absolute position embeddings was sug-\ngested.\nThe way in which we compute zi,t (see (5)) is similar to\nthat of a convolutional operator across the temporal dimen-\nsion. However, instead of using a ﬁxed kernel, the kernel\nweights are computed from the content of the variables and\ntheir underlying dependencies, making the model adaptive\nto the dynamism of the temporal patterns of the data.\nMulti-headed TAC In practice, multiple attention heads\ncan be used to calculate different representation sets from\nthe input. To achieve this, each single-headed attention uses\nlinear transforms W (h) , W (h) , W (h) ∈Rdin×dout/H to gen-\nQ K V\nerate the output z(h) ∈Rdout/H, where H is the number\ni,t\nof attention heads. These outputs are then concatenated to\nobtain the ﬁnal output zi,t of the multi-headed attention:\nzi,t = z(1) ; z(2) ; . . . ; z(H) ∈Rdout .\ni,t i,t i,t\nDilated TAC When m ERAN blocks are stacked together,\nthe receptive ﬁeld will be m (w −1). To further increase the\nreceptive ﬁeld, we use a “dilated” window, where neighbor\n3923\ndata points can be skipped regularly. This concept is similar\nto the dilated convolution presented in [24]. We use a dila-\ntion factor p to control the dilation of each layer, where the\ndilation of the i-th ERAN block is pi−1. For example, if the\ndilation factor is 2, then the dilation of the ﬁrst layer is 1, the\nsecond layer is 2, the third layer is 4, and so on. In summary,\nin a network of m ERAN blocks, the receptive ﬁeld is:\nm(w −1) if p = 1\nRF = (7)",
+      "page_start": 5,
+      "page_end": 6
+    },
+    {
+      "heading": "1 + (w −1)(pl −1) /(p −1) if p > 1",
+      "text": "assuming the window size w is ﬁxed for all layers.",
+      "page_start": 6,
+      "page_end": 6
+    },
+    {
+      "heading": "3.4.2 TGC: Temporal graph convolution module",
+      "text": "Graph convolutional networks (GCN) generalise convolu-\ntional neural networks (CNNs) to work on graph-structured\ndata, such as social networks or protein structures [4, 8, 16].\nGCNs generate output node features that capture the spa-\ntial dependencies of nodes, given their node features and a\ngraph structure. While there are existing works that use graph\nconvolutions for time series forecasting, most of them use a\npre-deﬁned graph or a static graph learned from data for the\nentire time series. In contrast, we use an evolving graph for\nthe time series, where each time step has a different adjacency\nmatrix computed in the EGL layer. At each step, graph con-\nvolutions are performed with the corresponding adjacency\nmatrix.\nThere are many ways to perform graph convolutions,\nsuch as spectral graph convolution [4], graph convolutional\nnetworks [16], and approximation of convolutions using\nChebyshev polynomials [8]. Here, we use diffusion graph\nconvolution, which was proposed in [20] for its effectiveness\nin capturing inter-series relations. This formulation captures\nthe relations of node features in K graph convolution iter-\nations. Given node features X ∈Rdin×N and the learned\nadjacency matrix A, the output node features Z ∈Rdout×N\nare calculated as follows:\nK\nZ⊤= Ak X⊤W (k) (8)\nk=0\nwhere Ak ∈RN×N is the k-th power of the adjacency matrix\nA, and W (k) ∈Rdin×dout are learnable parameters at the k-th\nconvolution iteration.\nThe formula for the graph diffusion convolution in (8) is\napplied to each step of the i-th ERAN block, given the list\nof adjacency matrices A1, A2, . . . , AL. In detail, at the i-th\nERAN block, the graph diffusion convolution is applied at\n1 3\n3924\neach time step as follows.\nK\nZ⊤ = Ak X⊤ W (k) (9)\nt t t\nk=0\nwhere Zt ∈Rdout×N is the output node features, and Xt ∈\nRdin×N is the input node features at time step t, respectively.\nIt is important to note that at the i-th ERAN block, the length\nof the temporal model’s output is Li, which is smaller than",
+      "page_start": 6,
+      "page_end": 7
+    },
+    {
+      "heading": "3.4.3 Residual and skip connections",
+      "text": "The classical residual network (ResNet) architecture intro-\nduced a skip connection that adds the input tensor to the\noutput tensor of a stack of layers, which is then passed to the\nnext stack [13]. This helps alleviate the problem of vanish-\ning gradients and improves the performance of deep neural\nnetworks. In this work, we adopt a similar approach in our\nproposed model, to enhance the trainability of the model.\nHowever, due to the downsampling effect of the TAC mod-\nule, the length of the residual tensor may be shorter than\nthat of the input tensor. To ensure that the input tensor and\nthe residual tensor have the same dimensions for addition,\nwe truncate the input tensor to match the dimensions of the\nresidual tensor. The addition operation is deﬁned as follows:",
+      "page_start": 7,
+      "page_end": 7
+    },
+    {
+      "heading": "X (i+1) = X (i)[:, :, :, L −Li : L] + R(i) (10)",
+      "text": "with Li is the length of ˆX (i), the residual output of the i-th\nERAN block. Note that, Li is also the length of the input for\nthe (i + 1)-th ERAN block.\nThe skip connection at each consists of a 2D convolution\nwith a kernel size of (1, Li). The purpose of a skip connection\nmodule is to combine all steps of C(i), the skip output of the\ni-th TAC, into C(i) ∈RDc×N, which has a single step:\nC(i) = Conv2D C(i) (11)",
+      "page_start": 7,
+      "page_end": 7
+    },
+    {
+      "heading": "3.5 Multi-step forecasting",
+      "text": "The outputs of the skip connections are summed up and fed to\nthe output layer which generates the prediction of the future\nˆY f . The sum of outputs of the skip connections is as follows.\nm",
+      "page_start": 7,
+      "page_end": 7
+    },
+    {
+      "heading": "C = C(i) ∈RDc×N (12)",
+      "text": "i=1\nThe output layer consists of two 2D convolutions with a ker-\nnel size of (1, 1), which are used to translate the dimension\nof the input (Dc) to the forecasting horizontal dimension. In\n1 3\nB. Nguyen-Thai et al.\nother words, the dimensionality of the output layer’s input is\nDc, while its the dimentionality of its output is τ.",
+      "page_start": 7,
+      "page_end": 7
+    },
+    {
+      "heading": "4.1 Experimental settings",
+      "text": "To measure the time-series forecasting performance of\nERAN, we use the following public datasets, ranging from\ntrafﬁc ﬂow, electricity consumption, to COVID-192. A sum-\nmary of these datasets is presented in Table 1.\n• PEMS-03: contains trafﬁc ﬂow information collected by",
+      "page_start": 7,
+      "page_end": 7
+    },
+    {
+      "heading": "358 sensors in the San Francisco Bay Area from Sep 1,",
+      "text": "2018, to Nov 30, 2018.\n• PEMS-04: contains trafﬁc ﬂow information collected by",
+      "page_start": 7,
+      "page_end": 7
+    },
+    {
+      "heading": "307 sensors in the San Francisco Bay Area from Jan 1,",
+      "text": "2018, to Feb 28, 2018.\n• PEMS-08: contains trafﬁc ﬂow information collected by",
+      "page_start": 7,
+      "page_end": 7
+    },
+    {
+      "heading": "170 sensors in the San Bernardino area from Jul 1, 2016,",
+      "text": "to Aug 31, 2016.\n• Solar-Energy: the solar power production records in the\nyear of 2006, sampled every 10 minutes from 137 PV\nplants in Alabama State.\n• Electricity: the hourly electricity consumption of 321\nclients recorded from 2012 to 2014.\n• COVID-19 Global: the country-wise daily new cases and\ndaily death tolls of COVID-19 in 25 countries, collected\nby John Hopkins University.\n• COVID-19 US: the state-level daily new cases and death\ntolls of COVID-19 in the US, collected by John Hopkins\nUniversity.\nFor PEMS-03, PEMS-04, and PEMS-08, we use a one-hour\nhistorical window (12 steps) to predict the values in a 15-\nminute forecasting horizon (3 steps), following [5]. For Solar,\nwe use a 4-hour historical window (24 steps) to predict the\nvalues in the next 0.5 hour forecasting horizon (3 steps). For\nElectricity, we use a 24-hour historical window (24 steps)\nto predict the values in the next 3-hour forecasting horizon\n(3 steps). For COVID-19 Global data, we use a 7-day his-\ntorical window to predict the daily values in the next 7-day\nforecasting horizon. For COVID-19 US, we use a historical\nwindow of 14 days to predict the values in the next 7-day\nforecasting horizon. We evaluate the methods by comparing\nthe predicted values with the ground truth using MAE (Mean\nAbsoluteError),RMSE(RootMeanSquareError),andMean",
+      "page_start": 7,
+      "page_end": 7
+    },
+    {
+      "heading": "2 The datasets used in this paper is available at the following URL:",
+      "text": "https://drive.google.com/drive/folders/1vsF7dzpiCAKOWpUJw6u1ne\n1TjMa5m-ZD\nLearning evolving relations for multivariate time series forecasting\nTable 1 Summary of the datasets\nDataset # Nodes # Time steps Sampling Predeﬁned\nrate graph\nPEMS-03 358 26,209 5 min Available\nPEMS-04 307 34,272 5 min Available\nPEMS-08 170 17,856 5 min Available\nSolar 137 52,560 10 min Not\navailable\nElectricity 321 26,304 1 hour Not\navailable\nCOVID-19 25 160 1 day Not\nGlobal available\nCOVID-19 54 320 1 day Not\nUS available\nAverage Percentage Error (MAPE), which are widely used\nevaluation metrics in forecasting tasks.",
+      "page_start": 7,
+      "page_end": 8
+    },
+    {
+      "heading": "4.2 Baseline methods",
+      "text": "To verify the effectiveness of the proposed model, we\ncompare it with state-of-the-art methods for time-series fore-\ncasting from the following groups: (i) traditional methods,\n(ii) deep learning-based methods, (iii) methods that use a\npre-deﬁned graph, and (iv) methods that automatically gen-\nerate a graph from the data. The details of the baselines are\nas follows.\n• VAR (Vector Auto-Regression) [15]: An auto-regression\nmodel for multivariate time series.\n• LSTM [14]: A type of recurrent neural network (RNN)\narchitecture designed to capture and remember long-\nrange dependencies in sequential data.\n• GRU [6]: A recurrent neural network for sequence data\nthat efﬁciently learns dependencies and avoids gradient\nissues.\n• TCN [3]: A model for sequential data using convolutional\nneural network.\n• LSTNet [18]: A deep neural network that combines\nconvolutional neural networks and recurrent neural net-\nworks.\n• Reformer [17]: A memory efﬁcient transformer-based\nmodel for multivariate time series forecasting.\n• Informer [38]: A transformer-based model for multivari-\nate time series forecasting.\n• Crossformer [37]: A transformer-based model for mul-\ntivariate time series forecasting using cross dimension\ndependency.\n• DCRNN [20]: A convolutional recurrent neural network\nthat combines graph convolutions with recurrent neural\nnetworks.\n3925\n• ST-GCN [36]: A spatial-temporal graph convolutional\nnetwork that combines a graph convolution with 1D con-\nvolutions.\n• GWNet (Graph Wavenet) [34]: A spatial-temporal graph\nconvolutional network that combines graph convolutions\nwith 1D dilated convolutions.\n• MT-GNN [35]: A method that learns to generate a static\ngraph from the data and then combines graph convolu-\ntions with 1D convolutions.\n• StemGNN [5]: A method that learns to generate a static\ngraph from the data and uses graph neural networks and\n1D convolutions in the spectral domain.\n• AGCRN [2]: A method that learns to generate a static\ngraph from the data and combines graph convolutions\nwith recurrent neural networks.",
+      "page_start": 8,
+      "page_end": 8
+    },
+    {
+      "heading": "4.3 Implementation details",
+      "text": "In our proposed model, ERAN, we utilized a three-layer\narchitecture with input and output dimensionalities of 128.\nThe selection of window size and dilation factor was con-\ntingent upon the length of the historical window. In the case\nof a long historical window, our goal is to have an expansive\nreceptiveﬁeldthatcoverstheentiresequence.Toachievethis,\nwe utilize a long window size and a large dilation factor. In\ncontrast, for a shorter historical window, a smaller window\nsize and dilation factor are sufﬁcient. In detail, for data with\nlength smaller than or equal to 12 steps, we used a window\nsize of 3 and dilation of 1, while for data with length greater\nthan 12 steps, we used a window size of 5 and dilation factor\nof 2. We employed the Adam optimiser with a learning rate\nof 0.001 and weight decay of 0.0001.\nAll deep learning-based models were implemented using\nPyTorch and trained on a machine equipped with a single\nNVIDIA GPU. We halted training after 100 epochs and\nreported results on the test set for the epochs that produced\nthe lowest loss on the validation set.",
+      "page_start": 8,
+      "page_end": 8
+    },
+    {
+      "heading": "4.4.1 Overall comparison",
+      "text": "Tables 2, 3 and 4a provide a comprehensive comparison of\nthe methods across the datasets. The results show that ERAN\noutperforms all competing methods on all datasets. In addi-\ntion, we make the following observations:",
+      "page_start": 8,
+      "page_end": 8
+    },
+    {
+      "heading": "1. In general, deep learning-based methods perform better",
+      "text": "than traditional methods, except for VAR, which per-\nforms comparably to some deep learning-based methods\non certain trafﬁc ﬂow datasets.\n1 3\n3926\nTable 2 Results on trafﬁc ﬂow\nMAE RMSE\nforecasting (historical window:\nPEMS-03",
+      "page_start": 8,
+      "page_end": 9
+    },
+    {
+      "heading": "12 steps, forecast horizon: 3",
+      "text": "steps) VAR 23.65 38.26\nLSTM 21.33 35.11\nGRU 21.18 34.84\nTCN 18.23 25.04\nLSTNet 19.07 29.67\nReformer 17.35 30.72\nInformer 18.47 32.41\nCrossformer 15.69 24.76\nDCRNN 18.18 30.31\nST-GCN 17.49 30.12\nGWNet 19.85 32.94\nStemGNN 14.32 21.64\nMTGNN 14.27 21.13\nAGCRN 14.46 21.97\nERAN (ours) 13.89 20.94",
+      "page_start": 9,
+      "page_end": 9
+    },
+    {
+      "heading": "2. Among deep learning-based methods, graph-based mod-",
+      "text": "els outperform non-graph-based models (such as LSTM,\nTCN, and LSTNet), highlighting the signiﬁcance of\nexplicitly modeling inter-series dependencies.",
+      "page_start": 9,
+      "page_end": 9
+    },
+    {
+      "heading": "3. Ourproposedmodel,ERAN,outperformsothermethods,",
+      "text": "that model the inter-channel relations, by a signiﬁcant\nmargin. The key difference is that while these methods\nonly capture static inter-channel relations, ERAN models\nthe evolution of such relations via an evolving graphs and\nTable 3 Results on the energy consumption forecasting (historical win-\ndow: 24 steps, forecast horizon: 3 steps)\nMAE RMSE MAPE MAE RMSE MAPE\nSolar-Energy Electricity\nVAR 2.27 3.25 0.925 268.4 1811.3 0.194\nLSTM 2.18 3.17 0.846 230.3 1725.4 0.246\nGRU 1.98 3.05 0.878 230.3 1725.4 0.225\nTCN 2.05 3.09 0.735 221.1 1698.5 0.182\nLSTNet 2.15 3.06 0.684 248.9 1625.3 0.178\nReformer 1.43 2.41 0.751 208.7 1183.4 0.197\nInformer 1.57 2.58 0.786 215.5 1296.8 0.199\nCrossformer 1.52 2.65 0.676 336.7 2408.9 0.205\nStemGNN 1.19 2.26 0.651 336.7 2408.9 0.244\nGWNet 2.75 4.05 0.977 336.7 2408.9 0.407\nMTGNN 1.19 2.23 0.452 204.2 1645.4 0.133\nAGCRN 1.15 2.21 0.519 201.5 1308.7 0.224\nERAN (ours) 1.08 2.05 0.446 170.9 1107.4 0.119\nDue to the unavailability of pre-deﬁned graphs, models that are depen-\ndent on pre-deﬁned graphs are excluded\n1 3\nB. Nguyen-Thai et al.\nMAPE MAE RMSE MAPE MAE RMSE MAPE\nPEMS-04 PEMS-08\n0.245 24.54 38.61 0.172 19.19 29.81 0.131\n0.233 27.14 41.59 0.182 22.20 34.06 0.142\n0.183 27.41 40.34 0.179 22.43 34.31 0.145\n0.194 26.31 36.11 0.156 15.93 25.69 0.165\n0.177 24.04 37.38 0.170 20.26 31.96 0.113\n0.174 21.09 33.95 0.151 19.17 29.18 0.126\n0.182 22.17 36.00 0.173 20.41 31.95 0.125\n0.164 20.84 32.12 0.150 16.26 24.78 0.125\n0.181 19.54 31.22 0.171 17.86 27.83 0.114\n0.171 20.03 33.21 0.145 18.02 27.83 0.114\n0.193 26.85 39.70 0.172 19.13 28.16 0.126\n0.162 20.24 32.15 0.101 15.83 24.93 0.093\n0.155 20.12 30.47 0.122 15.04 22.45 0.111\n0.156 19.12 30.98 0.131 15.95 25.22 0.112\n0.148 18.76 29.48 0.104 14.46 22.26 0.091\nthus captures dynamic dependencies between variables\nmore effectively.\nTo evaluate the long-term forecasting ability, we report\nthe mean absolute error (MAE) of the predictions at dif-\nferent forecasting horizons for the PEMS-04 and Electricity\ndatasets in Fig. 3. Our results demonstrate that ERAN outper-\nforms all competing methods across all forecasting horizons,\nshowing its effectiveness in predicting long-term trends. Par-\nticularly, for the longest horizon (60 minutes), the difference\nbetween ERAN and the other methods is signiﬁcant, empha-\nsizing ERAN’s superior long-term forecasting ability.",
+      "page_start": 9,
+      "page_end": 9
+    },
+    {
+      "heading": "4.4.2 Signiﬁcance testing",
+      "text": "To assess the statistical signiﬁcance of our results, we con-\nducted pairwise hypothesis tests comparing the absolute\nerrors generated by the ERAN against those produced by\nthe second-best model. The hypotheses were formulated as\nfollows: H0 (null hypothesis) posits that there is no differ-\nence between the mean absolute errors (MAE) of the two\nalgorithms, while Ha (alternative hypothesis) asserts that the\nmean absolute errors of the two algorithms are statistically\ndifferent.\nThe signiﬁcance level, denoted by a threshold of 0.05 (cor-\nresponding to a conﬁdence level of 95%), was used to assess\nthe p-values. If the p-value is smaller than this threshold, the\nnull hypothesis is rejected.\nThe t-test results are outlined in Table 5. Notably, all pair-\nwise tests exhibit p-values signiﬁcantly below 0.05. This lack\nof evidence supports the rejection of the null hypothesis,\nLearning evolving relations for multivariate time series forecasting\nTable 4 Results on COVID-19 new cases and death tolls forecasting (historical\n(a) Results on global new cases and death tolls forecasting (historical\nwindow: 7 steps, forecast horizon: 7 steps).\nVAR\nLSTM\nGRU\nTCN\nLSTNet\nReformer\nInformer\nCrossformer\nStemGNN\nGWNet\nMTGNN\nAGCRN\nERAN (ours)\n(b) Results on US new cases and death tolls forecasting (historical\nwindow: 14 steps, forecast horizon: 7 steps).\nVAR\nLSTM\nGRU\nTCN\nLSTNet\nReformer\nInformer\nCrossformer\nStemGNN\nGWNet\nMTGNN\nAGCRN\nERAN (ours)\nDue to the unavailability of pre-deﬁned graphs, models that are dependent\nsignifying a statistically signiﬁcant difference between the\nERAN MAE and that of the next best model.",
+      "page_start": 9,
+      "page_end": 10
+    },
+    {
+      "heading": "4.4.3 Impact on non-stationary time series",
+      "text": "To evaluate the efﬁcacy of ERAN on non-stationary time\nseries, speciﬁcally, we investigate the stationarity of time\nseries and compare how ERAN outperforms existing models\nin both stationary and non-stationary contexts.\nWe begin by examining the stationarity of time series\nusing the Augmented Dickey-Fuller test (ADF) [9]. The\nADF test is a widely employed statistical method for deter-\nmining whether a given time series is stationary. The test\n3927\nwindow: 7 steps, forecast horizon: 7 steps)\nMAE RMSE MAPE MAE RMSE MAPE\nGlobal new cases Global death toll\n2,211 3,847 3.621 178.51 235.42 6.428\n1,783 3,421 3.586 172.13 211.61 6.132\n1,761 3,215 3.421 173.21 214.35 6.241\n1,787 3,414 3.472 175.32 223.73 6.311\n1,761 3,312 3.045 167.45 198.56 5.729\n3,305 6,728 2.501 228.91 361.25 6.386\n3,608 7,562 3.162 171.45 281.94 7.109\n2,050 5,573 3.515 116.50 312.50 3.717\n2,828 7,186 1.854 72.32 161.45 5.345\n1,340 3,796 1.306 96.54 152.76 4.921\n1,365 3,294 1.528 73.05 151.92 4.955\n1,396 3,417 1.222 116.40 296.29 7.354\n1,282 3,027 0.873 69.93 143.21 4.811\nUS new cases US death toll\n1,938 4,821 1.632 41.13 78.61 1.428\n1,808 4,905 1.268 39.43 76.82 1.032\n1,791 4,862 1.127 39.28 75.93 1.004\n1,754 4,899 1.213 38.45 72.58 1.341\n1,821 3,726 1.028 40.21 78.32 1.213\n3,149 6,338 1.067 45.58 87.39 1.025\n2,661 5,559 2.231 39.13 76.64 1.001\n1,650 4,547 1.338 29.59 61.58 1.282\n2,419 5,375 1.361 35.53 64.85 1.042\n1,446 4,165 1.052 28.73 50.28 1.015\n1,458 3,981 1.015 28.32 48.87 1.016\n1,581 4,929 1.005 37.03 70.13 1.311\n1,060 2,348 0.781 24.15 45.64 0.979\non pre-deﬁned graphs are excluded\nformulates a null hypothesis assuming the presence of a unit\nroot, indicating non-stationarity, and an alternative hypothe-\nsis suggesting stationarity. The test statistic is then compared\nto critical values, and the resulting p-value is pivotal in estab-\nlishing the stationarity of the time series. A p-value below a\nchosen signiﬁcance level (commonly 0.05) leads to the rejec-\ntion of the null hypothesis, providing evidence in favor of\nstationarity. In contrast, a p-value exceeding the signiﬁcance\nlevel leads to the acceptance of the null hypothesis, implying\nthe presence of non-stationarity in the time series. Therefore,\nthe ADF test utilizes the p-value to make informed decisions\nabout the stationarity of the analysed time series. The results\nof the ADF test regarding the stationarity of time series are\npresented in Table 6.\n1 3\n3928\nFig. 3 MAE at different forecasting horizons\nNext, we assess the enhancement in Mean Absolute Error\n(MAE) of ERAN compared to the second-best model for\neach dataset. From the outcomes presented in Table 7, we\nTable 5 Signiﬁcance testing results between ERAN and the Next best\nmodel for each dataset\nDataset Next best model p-value Diff?\nPEMS-03 MTGNN 7.15e-06 Yes\nPEMS-04 AGCRN 3.42e-06 Yes\nPEMS-08 MTGNN 2.51e-05 Yes\nSolar AGCRN 2.45e-05 Yes\nElectricity AGCRN 1.66e-05 Yes\nCOVID-19 Global GWNet 5.76e-05 Yes\nnew cases\nCOVID-19 Global StemGNN 1.23e-05 Yes\ndeath toll\nCOVID-19 US new GWNet 1.47e-05 Yes\ncases\nCOVID-19 US death MTGNN 2.63e-05 Yes\ntoll\n1 3\nB. Nguyen-Thai et al.\nTable 6 The results of ADF test\nDataset p-value Stationary\nPEMS-03 0.0 Yes\nPEMS-04 1.11e-25 Yes\nPEMS-08 2.32e-26 Yes\nSolar 0.0 Yes\nElectricity 0.0011 Yes\nCOVID-19 Global new cases 0.6939 No\nCOVID-19 Global death toll 0.9989 No\nCOVID-19 US new cases 1.0 No\nCOVID-19 US death toll 0.9983 No\nA p-value greater than 0.05 indicates that the time series is non-\nstationary\ncan see that the enhancements on non-stationary time series\nare more substantial than those on stationary ones. Across\nﬁve stationary time series, the average percentage decrease of\nMAE is 5.93%, whereas over four non-stationary time series,\nthe average percentage decrease of MAE is 12.25%. These\nresults conﬁrm the effectiveness of ERAN in enhancing fore-\ncast accuracy, particularly in the context of non-stationary\ntime series.",
+      "page_start": 10,
+      "page_end": 11
+    },
+    {
+      "heading": "4.5 Ablation study",
+      "text": "To gain more insight into the proposed model, we conducted\nan ablation study to evaluate the impact of (i) learning the\ndynamics of the inter-channel relations, and (ii) learning the\ndynamics of the intra-channel relations; (iii) the number of\nthelayers;(iv)thedilationfactor,onthemodel’sperformance\nas follows.\nTable 7 MAE Improvement of ERAN relative to the second best model\nacross datasets\nDataset Stationary Second best % MAE\nmodel decrease\nPEMS-03 Yes MTGNN 2.66%\nPEMS-04 Yes AGCRN 1.88%\nPEMS-08 Yes MTGNN 3.85%\nSolar Yes AGCRN 6.08%\nElectricity Yes AGCRN 15.18%\nCOVID-19 Global No GWNet 4.32%\nnew cases\nCOVID-19 Global No StemGNN 3.30%\ndeath toll\nCOVID-19 US new No GWNet 26.69%\ncases\nCOVID-19 US death No MTGNN 14.72%\ntoll\nThe ﬁndings indicate a more pronounced enhancement in MAE for\nnon-stationary time series compared to stationary counterparts\nLearning evolving relations for multivariate time series forecasting\nTable 8 Ablation study on the impact of the graphs\nMAE RMSE MAE RMSE\nGlobal death toll US death toll\nEvolving graph 69.93 143.21 24.15 45.64\nStatic graph 71.28 146.35 26.18 47.21\nNo graph 72.25 148.98 26.51 47.54",
+      "page_start": 11,
+      "page_end": 12
+    },
+    {
+      "heading": "4.5.1 Impact of learning the dynamics of inter-channel",
+      "text": "relations\nTo evaluate the effectiveness of learning the dynamics\nof inter-channel relations, we examined three variants of\nERAN: (1) Evolving graph: where the inter-channel relations\nis modelled by an an elvoving graph generated by the EGL\nlayer, (2) Static graph: where the inter-channel relations is\nmodelled by a static graph generated from the data, which\nis unchanged thoughout the time series lifetime, and (3) No\ngraph: where inter-channel relations are ignored.\nTable 8 reports the results on the COVID-19 dataset.\nWe observe that the Evolving graph variant, which uses\nthe evolving graph, performs better than the other variants,\ndemonstrating the importance of capturing the evolution of\ninter-channel relations over time. Additionally, we see that\nthe Static graph variant, which can only capture a static rela-\ntion between the variables, improves the forecasting accu-\nracy. Finally, the No graph variant performs the worst among\nthe three variants, emphasizing the effectiveness of capturing\nthe relations between the variables using graph convolution.",
+      "page_start": 12,
+      "page_end": 12
+    },
+    {
+      "heading": "4.5.2 Impact of learning the dynamics of the intra-channel",
+      "text": "relations\nAs the learning the dynamics of intra-channel relations is\naccomplished through the TAC module, we investigated the\nimpact of this learning approach by comparing TAC with\nLSTM and TCN, which capture invariant temporal patterns\nonly. It’s important to note that TAC is achieved by removing\nthe graph from ERAN, making it equivalent to ERAN’s “no\ngraph” variant presented in Section 4.5.1.\nThe results in Table 9 show that TAC signiﬁcantly outper-\nforms LSTM and TCN on COVID transmission data, a highly\nTable 9 Study on the impact of TAC\nMAE RMSE MAE RMSE\nGlobal death toll US death toll\nTAC 72.25 148.98 26.51 47.54\nLSTM 172.13 211.61 39.43 76.82\nTCN 175.32 223.73 38.45 72.58\n3929\nFig. 4 MAE on COVID-19 US daily death toll with different number\nof layers\nnon-stationary time series. This indicates the effectiveness\nof using TAC in capturing the dynamics of the temporal pat-\nterns.",
+      "page_start": 12,
+      "page_end": 12
+    },
+    {
+      "heading": "4.5.3 Impact of the number of layers",
+      "text": "One important parameter of the ERAN is the number of lay-\ners. To demonstrate the impact of the number of layers, we\npresent a plot of the MAE on COVID-19 US death tolls in\nFig. 4. The optimal forecasting accuracy is achieved when\nthe number of layers is 3. With a small number of layers, the\nmodel’s capacity is too limited to learn the data. On the other\nhand, if we increase the number of layers, the model capacity\nwill increase and is prone to over-ﬁtting.",
+      "page_start": 12,
+      "page_end": 12
+    },
+    {
+      "heading": "4.5.4 Impact of the dilation factor",
+      "text": "We use a dilation factor p to control the dilation at each\nlayer. The dilation of the next layer is p times the dilation\nof the previous one. Thus, the dilation of layer l is pl−1.\nTable 10 shows the forecasting accuracy of COVID-19 in the\nUS using dilation factors 1 and 2. We can see that dilation\nfactor 2 achieves slightly better forecasting accuracy than\ndilation factor 1. This conﬁrms the effectiveness of using a\ndilation factor larger than 1 to extend the receptive ﬁeld.",
+      "page_start": 12,
+      "page_end": 12
+    },
+    {
+      "heading": "4.6 Qualitative analysis",
+      "text": "To gain more insight into the behavior of the methods, we\nplot in Fig. 5 two examples of the daily new cases forecasting\nTable 10 Ablation study on the impact of the dilation factor\nMAE RMSE MAE RMSE\nUS new cases US death toll\np=2 1,060 2,348 24.15 45.64\np=1 1,097 2,389 26.11 47.53\n1 3\n3930\nFig. 5 Visualisation of\nCOVID-19 forecasting\nfor COVID-19 in the US, 7 days in advance. The blue line\nrepresents the ground truth data for each state, while the\nother colors represent the forecasting results of the models.\nOverall,inbothexamples,ERANperformedbetterthanother\nmethods in predicting the ground truth data. ERAN was also\nbetter in capturing the trend when the ground truth went up\nand down. However, in both cases, there were some short but\nsharp spikes that no method could capture well.",
+      "page_start": 12,
+      "page_end": 13
+    },
+    {
+      "heading": "5 Conclusion",
+      "text": "We propose ERAN, a model that captures the dynamics of the\nintra- and inter-channel relations for multivairate time series\nforecasting. To model the intra-channel relations, ERAN\nutilises Temporal Attentional Convolution (TAC), which\napplies self-attention mechanism within a temporal win-\ndow. On the other hand, to model the inter-channel relations,\nERAN uses dynamic graph convolutional network, wherein\nthe graph structure evolves over time. Our experimental\narchitecture has established new state-of-the-art results on\nmultiple types of time series data, from classical trafﬁc ﬂows\nand electricity consumption forecasting to newly emerg-\ning problems like COVID- 19 projections. Furthermore,\nERAN exhibits signiﬁcant improvement over existing meth-\nods, particularly evident in non-stationary time series. The\nrepresentation power and generality of the model promise\nstrong and wide applications in time series modeling. How-\never, a notable limitation of the proposed model is the current\nexclusion of time-dependent covariates such as weather and\nprice indices as inputs for forecasting. Recognizing this, we\n1 3\nB. Nguyen-Thai et al.\nidentify the incorporation of these covariates as a potential\navenue for improvement, which we leave for future work.\nAcknowledgements This work is partially funded by the UK Research\nand Innovation (UKRI) as a Knowledge Transfer Partnership (KTP)\nunder project number 12493.\nAuthor Contributions Binh Nguyen-Thai proposed the research idea,\ndesigned and implemented the model, conducted experiments, and\nserved as the primary writer. Vuong Le, Ngoc-Dung T. Tieu, and Truyen\nTran contributed to the model design, result analysis, and manuscript\nrevisions. Svetha Venkatesh, and Naeem Ramzan supervised and par-\nticipated in revising the paper.\nData Availability The datasets used in this paper is available at\nthe following URL: https://drive.google.com/drive/folders/1vsF7dzpi\nCAKOWpUJw6u1ne1TjMa5m-ZD",
+      "page_start": 13,
+      "page_end": 13
+    },
+    {
+      "heading": "Declarations",
+      "text": "Ethical standard All datasets used in this paper are publicly available\nand no consent was required for their use.\nCompeting Interests The authors have no conﬂicts of interest to declare\nthat are relevant to the content of this article.\nOpen Access This article is licensed under a Creative Commons\nAttribution 4.0 International License, which permits use, sharing, adap-\ntation, distribution and reproduction in any medium or format, as\nlong as you give appropriate credit to the original author(s) and the\nsource, provide a link to the Creative Commons licence, and indi-\ncate if changes were made. The images or other third party material\nin this article are included in the article’s Creative Commons licence,\nunless indicated otherwise in a credit line to the material. If material\nis not included in the article’s Creative Commons licence and your\nintended use is not permitted by statutory regulation or exceeds the\npermitteduse,youwillneedtoobtainpermissiondirectlyfromthecopy-\nLearning evolving relations for multivariate time series forecasting\nright holder. To view a copy of this licence, visit http://creativecomm\nons.org/licenses/by/4.0/.",
+      "page_start": 13,
+      "page_end": 14
+    }
+  ],
+  "references": [
+    "1. Alexandrov A, Benidis K, Bohlke-Schneider M et al (2020) Glu- onts: probabilistic and neural time series modeling in python. J Mach Learn Res 21(116):1–6. http://jmlr.org/papers/v21/19-820. html",
+    "2. Bai L, Yao L, Li C et al (2020) Adaptive graph convolutional recur- rent network for trafﬁc forecasting. In: Larochelle H, Ranzato M, Hadsell R et al (eds) Advances in neural information processing systems, vol 33. Curran Associates, Inc., pp 17,804–17,815",
+    "3. Bai S, Kolter JZ, Koltun V (2018) An empirical evaluation of generic convolutional and recurrent networks for sequence model- ing. arXiv:1803.01271",
+    "4. Bruna J, Zaremba W, Szlam A et al (2014) Spectral networks and locally connected networks on graphs. International conference on learning representations (ICLR 2014)",
+    "5. Cao D, Wang Y, Duan J et al (2020) Spectral temporal graph neural network for multivariate time-series forecasting. Adv Neural Inf Process Syst 33",
+    "6. Cho K, van Merriënboer B, Gulcehre C et al (2014) Learning phrase representations using RNN encoder–decoder for statisti- cal machine translation. In: Proceedings of the 2014 conference on empirical methods in natural language processing (EMNLP), pp 1724–1734",
+    "7. Conti M, Turchetti C (1994) Approximation of dynamical sys- tems by continuous-time recurrent approximate identity neural networks. Neural Parallel Sci Comput 2(3):299–320",
+    "8. Defferrard M, Bresson X, Vandergheynst P (2016) Convolutional neural networks on graphs with fast localized spectral ﬁltering. In: Proceedings of the 30th international conference on neural infor- mation processing systems, NIPS’16, pp 3844–3852",
+    "9. Dickey DA, Fuller WA (1979) Distribution of the estimators for autoregressive time series with a unit root. J Am Stat Assoc 74(366):427–431",
+    "10. Dudek G (2015) Short-term load forecasting using random forests. In: Filev D, Jabłkowski J, Kacprzyk J et al (eds) Intelligent sys- tems’2014. Springer International Publishing, Cham, pp 821–828",
+    "11. Gilmer J, Schoenholz SS, Riley PF et al (2017) Neural message passing for quantum chemistry. In: Proceedings of the 34th inter- national conference on machine learning, ICML’17, vol 70. pp 1263–1272",
+    "12. Guo S, Lin Y, Feng N et al (2019) Attention based spatial-temporal graph convolutional networks for trafﬁc ﬂow forecasting. In: Pro- ceedings of the AAAI conference on artiﬁcial intelligence, pp 922–929",
+    "13. He K, Zhang X, Ren S et al (2016) Deep residual learning for image recognition. In: 2016 IEEE conference on computer vision and pattern recognition (CVPR), pp 770–778. https://doi.org/10. 1109/CVPR.2016.90",
+    "14. Hochreiter S, Schmidhuber J (1997) Long short-term memory. Neural Comput 9(8):1735–1780",
+    "15. Hyndman R, Athanasopoulos G (2021) Forecasting: principles and practice, 3rd edn. OTexts, Australia",
+    "16. Kipf TN, Welling M (2017) Semi-supervised classiﬁcation with graph convolutional networks. In: Proceedings of the 5th interna- tional conference on learning representations, ICLR ’17 3931",
+    "17. Kitaev N, Kaiser L, Levskaya A (2020) Reformer: the efﬁcient transformer. In: International conference on learning representa- tions. https://openreview.net/forum?id=rkgNKkHtvB",
+    "18. Lai G, Chang WC, Yang Y et al (2018) Modeling long- and short- term temporal patterns with deep neural networks. In: The 41st international ACM SIGIR conference on research and development in information retrieval, SIGIR’18. New York, pp 95–104",
+    "19. Li S, Jin X, Xuan Y et al (2019) Enhancing the locality and breaking the memory bottleneck of transformer on time series forecasting. In: Advances in neural information processing systems, pp 5243– 5253",
+    "20. Li Y, Yu R, Shahabi C et al (2018) Diffusion convolutional recurrent neural network: data-driven trafﬁc forecasting. In: International conference on learning representations (ICLR ’18)",
+    "21. Lim B, Arık SÖ, Loeff N et al (2021) Temporal fusion transformers for interpretable multi-horizon time series forecasting. Int J Fore- casting 37(4):1748–1764",
+    "22. Mills TC (1990) Time series techniques for economists. Cambridge University Press",
+    "23. Nguyen D, Nguyen B, Nguyen P et al (2021) High-order represen- tation learning for multivariate time series forecasting. In: Time series workshop@ICML 2021",
+    "24. Oord Avd, Dieleman S, Zen H et al (2016) Wavenet: a generative model for raw audio. arXiv:1609.03499",
+    "25. Pai PF, Lin KP, Lin CS et al (2010) Time series forecast- ing by a seasonal support vector regression model. Expert Syst Appl 37(6):4261–4265. https://doi.org/10.1016/j.eswa. 2009.11.076, https://www.sciencedirect.com/science/article/pii/ S0957417409010185",
+    "26. Pareja A, Domeniconi G, Chen J et al (2020) EvolveGCN: evolving graph convolutional networks for dynamic graphs. In: Proceedings of the thirty-fourth AAAI conference on artiﬁcial intelligence",
+    "27. Pham T, Tran T, Phung D et al (2017) Column networks for collec- tive classiﬁcation. In: Proceedings of AAAI conference on artiﬁcial intelligence",
+    "28. Rangapuram SS, Seeger MW, Gasthaus J et al (2018) Deep state space models for time series forecasting. In: Bengio S, Wallach H, Larochelle H et al (eds) Advances in neural infor- mation processing systems, vol 31. Curran Associates, Inc., https://proceedings.neurips.cc/paper_ﬁles/paper/2018ﬁle/5cf6896 9fb67aa6082363a6d4e6468e2-Paper.pdf",
+    "29. Rasul K, Seward C, Schuster I et al (2021) Autoregressive denois- ing diffusion models for multivariate probabilistic time series forecasting. In: International conference on machine learning. https://api.semanticscholar.org/CorpusID:231719657",
+    "30. Salinas D, Flunkert V, Gasthaus J et al (2020) Deepar: probabilistic forecasting with autoregressive recurrent networks. Int J Fore- casting 36(3):1181–1191. https://www.sciencedirect.com/science/ article/pii/S0169207019301888",
+    "31. Shaw P, Uszkoreit J, Vaswani A (2018) Self-attention with relative position representations. In: Proceedings of the 2018 conference of the North American chapter of the association for computational linguistics: human language technologies, vol 2 (Short Papers). Association for Computational Linguistics, New Orleans, pp 464–",
+    "468. https://doi.org/10.18653/v1/N18-2074, https://aclanthology. org/N18-2074",
+    "32. Vaswani A, Shazeer N, Parmar N et al (2017) Attention is all you need. In: Proceedings of the 31st international conference on neural information processing systems, NIPS’17, pp 6000–6010",
+    "33. Wu N, Green B, Ben X et al (2020a) Deep transformer mod- els for time series forecasting: the inﬂuenza prevalence case. arXiv:2001.08317",
+    "34. Wu Z, Pan S, Long G et al (2019) Graph WaveNet for deep spatial- temporal graph modeling. In: Proceedings of the twenty-eighth international joint conference on artiﬁcial intelligence, IJCAI-19. 1 3 3932 International Joint Conferences on Artiﬁcial Intelligence Organi- zation, pp 1907–1913",
+    "35. WuZ,PanS,LongGetal(2020b)Connectingthedots:multivariate time series forecasting with graph neural networks. In: Proceedings of the 26th ACM SIGKDD international conference on knowledge discovery and data mining. Association for Computing Machinery, New York, pp 753–763",
+    "36. Yu B, Yin H, Zhu Z (2018) Spatio-temporal graph convolutional networks: a deep learning framework for trafﬁc forecasting. In: Proceedings of the 27th international joint conference on artiﬁcial intelligence (IJCAI) Authors and Aﬃliations Binh Nguyen-Thai1,2 · Vuong Le3 · Ngoc-Dung Svetha Venkatesh6 · Naeem Ramzan1 Vuong Le levuong@amazon.com Ngoc-Dung T. Tieu tieungocdung@gmail.com Truyen Tran truyen.tran@deakin.edu.au Svetha Venkatesh svetha.venkatesh@deakin.edu.au Naeem Ramzan naeem.ramzan@uws.ac.uk 1 3 B. Nguyen-Thai et al.",
+    "37. Zhang Y, Yan J (2023) Crossformer: transformer utilizing cross- dimension dependency for multivariate time series forecasting. In: International conference on learning representations",
+    "38. Zhou H, Zhang S, Peng J et al (2021) Informer: beyond efﬁ- cient transformer for long sequence time-series forecasting. In: The thirty-ﬁfth AAAI conference on artiﬁcial intelligence, AAAI 2021. AAAI Press, p online Publisher’s Note Springer Nature remains neutral with regard to juris- dictional claims in published maps and institutional afﬁliations. T. Tieu4,5 · Truyen Tran6 · 1 School of Computing, Engineering and Physical Sciences, University of the West of Scotland, High St, Paisley PA1 2BE, UK 2 Raven Controls Limited, 227 West George Street, Glasgow G2 2ND, UK 3 Amazon, 555 Collins street, Melbourne, Victoria 3000, Australia 4 Faculty of Information Technology, University of Transport and Communications, 3 Cau Giay, Dong Da, Hanoi, Vietnam 5 University of Birmingham, Edgbaston, Birmingham B15 2TT, UK 6 Applied AI Institute, Deakin University, 75 Pigdons Road, Waurn Ponds, VIC 3126, Australia"
+  ],
+  "images": [
+    {
+      "page_number": 4,
+      "image_index": 1,
+      "path": "output\\ERAN\\images\\png\\page_004_img_001.png",
+      "caption": null,
+      "figure_label": null
+    },
+    {
+      "page_number": 6,
+      "image_index": 1,
+      "path": "output\\ERAN\\images\\png\\page_006_img_001.png",
+      "caption": null,
+      "figure_label": null
+    },
+    {
+      "page_number": 11,
+      "image_index": 1,
+      "path": "output\\ERAN\\images\\png\\page_011_img_001.png",
+      "caption": null,
+      "figure_label": null
+    },
+    {
+      "page_number": 11,
+      "image_index": 2,
+      "path": "output\\ERAN\\images\\png\\page_011_img_002.png",
+      "caption": null,
+      "figure_label": null
+    },
+    {
+      "page_number": 12,
+      "image_index": 1,
+      "path": "output\\ERAN\\images\\png\\page_012_img_001.png",
+      "caption": null,
+      "figure_label": null
+    },
+    {
+      "page_number": 13,
+      "image_index": 1,
+      "path": "output\\ERAN\\images\\png\\page_013_img_001.png",
+      "caption": null,
+      "figure_label": null
+    }
+  ],
+  "json_path": "output\\ERAN\\ERAN.json"
+}
