@@ -126,7 +126,7 @@ def _extract_page_text_reading_order(page: fitz.Page) -> str:
     page around the vertical midpoint and reassembles words in a left-column
     then right-column order.
     """
-    words = [word for word in page.get_text("words") if len(word) >= 5]
+    words = [word for word in page.get_text("words") if len(word) >= 5 and len(word[4].strip()) > 0]
     if not words:
         return str(page.get_text("text"))
 

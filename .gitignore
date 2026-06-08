@@ -9,6 +9,10 @@ __pycache__/
 .env
 .env.*
 
+# Generated artifacts
+output/
+papers/
+
 # Editor/system noise
 .DS_Store
 Thumbs.db
