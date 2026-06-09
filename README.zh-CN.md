@@ -84,13 +84,29 @@ python scripts/obsidian_writer.py ./output/<paper>/<paper>.analysis.json --vault
 
 ## 🎮 作为 AI Agent Skill 使用
 
-把 `SKILL.md` + `scripts/` + `assets/` + `references/` 放到你的 Agent 的 skills 目录：
+clone 项目后，按以下方式安装为 AI 助手的 Skill：
 
-| Agent | 安装方式 |
-|---|---|
-| **Reasonix** | `/skill new paper-assistant` 或复制到 `.reasonix/skills/` |
-| **Claude Code** | `.claude/skills/paper.md`（已内置） |
-| **Kimi Code** | `.kimi/skills/paper-assistant/`（已内置） |
+### Reasonix
+
+```bash
+mkdir -p .reasonix/skills/paper-assistant
+cp SKILL.md .reasonix/skills/paper-assistant/SKILL.md
+```
+
+或在应用内输入 `/skill new paper-assistant` 并粘贴 `SKILL.md` 内容。
+
+### Claude Code
+
+```bash
+cp SKILL.md .claude/skills/paper.md
+```
+
+### Kimi Code
+
+```bash
+mkdir -p ~/.kimi/skills/paper-assistant
+cp SKILL.md ~/.kimi/skills/paper-assistant/SKILL.md
+```
 
 然后直接说：*"帮我分析这篇论文 attention.pdf"*
 

@@ -86,13 +86,29 @@ python scripts/obsidian_writer.py ./output/<paper>/<paper>.analysis.json --vault
 
 ## 🎮 As an AI Agent Skill
 
-Drop `SKILL.md` + `scripts/` + `assets/` + `references/` into your agent's skills directory:
+After cloning the repo, install as a skill for your AI assistant:
 
-| Agent | Install |
-|---|---|
-| **Reasonix** | `/skill new paper-assistant` or copy to `.reasonix/skills/` |
-| **Claude Code** | `.claude/skills/paper.md` (included) |
-| **Kimi Code** | `.kimi/skills/paper-assistant/` (included) |
+### Reasonix
+
+```bash
+mkdir -p .reasonix/skills/paper-assistant
+cp SKILL.md .reasonix/skills/paper-assistant/SKILL.md
+```
+
+Or in-app: `/skill new paper-assistant` and paste `SKILL.md`.
+
+### Claude Code
+
+```bash
+cp SKILL.md .claude/skills/paper.md
+```
+
+### Kimi Code
+
+```bash
+mkdir -p ~/.kimi/skills/paper-assistant
+cp SKILL.md ~/.kimi/skills/paper-assistant/SKILL.md
+```
 
 Then just say: *"Analyze this paper: attention.pdf"*
 
