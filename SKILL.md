@@ -5,78 +5,74 @@ description: Process academic PDFs or fetch arXiv preprints and generate structu
 
 # Paper Assistant
 
-Transform academic papers into structured Markdown reading notes.
-
-## What It Does
-
-- **PDF Parsing**: Extract text, sections, references, captions, and figure images from academic PDFs using PyMuPDF.
-- **Agent-Native Analysis**: The agent itself analyzes paper content using the built-in prompt template — no external LLM API needed.
-- **Markdown Generation**: Render analysis into a templated Markdown note with auto-embedded figures.
-- **arXiv Fetching**: Search and download recent arXiv preprints.
+Turn any academic PDF into a structured Markdown reading note with extracted figures and AI-powered analysis — no external LLM API needed.
 
 ## Installation
 
 ```bash
+git clone https://github.com/Prozacc/Obsidian-paper-assistant.git
+cd Obsidian-paper-assistant
 pip install -r requirements.txt
 ```
 
 ## Configuration
 
-Optional environment variables:
-
 ```bash
-export PAPER_VAULT_DIR="./output"
-export PAPER_ATTACHMENTS_DIR="./output/attachments"
-export PAPER_OUTPUT_DIR="./output"
-export PAPER_DOWNLOAD_DIR="./papers"
+export PAPER_VAULT_DIR="./output"              # Where .md notes go
+export PAPER_ATTACHMENTS_DIR="./output/attachments"  # Figure images for embeds
+export PAPER_OUTPUT_DIR="./output"              # Intermediate files
+export PAPER_DOWNLOAD_DIR="./papers"            # arXiv downloads
+export PAPER_IMAGE_ENGINE="pymupdf"             # "pymupdf" or "pillow" (300 DPI)
+export PAPER_LANG="zh"                          # "zh" or "en"
 ```
 
-## Workflow
+## Agent Workflow
 
-### 1. Process a Local PDF
+When an AI agent processes a paper, it must complete ALL 3 steps:
 
-```bash
-# Step 1: Parse PDF
-python scripts/pdf_parser.py "paper.pdf" --out ./output
-
-# Step 2: Agent reads output/<stem>/<stem>.json, analyzes it,
-#         saves as output/<stem>/<stem>.analysis.json
-
-# Step 3: Render note
-python scripts/obsidian_writer.py ./output/<stem>/<stem>.analysis.json --vault ./output
-```
-
-Or use `process_paper.py` for step 1 + 3:
-
-```bash
-# Parse only (agent analyzes in between)
-python scripts/process_paper.py "paper.pdf"
-
-# Parse + render (if analysis JSON already exists)
-python scripts/process_paper.py "paper.pdf" --analysis ./output/paper/paper.analysis.json --name "2025 TiMi"
-```
-
-### 2. Fetch from arXiv
-
-```bash
-python scripts/fetch_arxiv.py                                    # last 7 days, 5 papers
-python scripts/fetch_arxiv.py --query "transformer" --max 3      # custom query
-```
-
-### 3. Step-by-Step
+### Step 1: Parse PDF → Structured JSON + Figures
 
 ```bash
 python scripts/pdf_parser.py "paper.pdf" --out ./output
-# Agent analyzes...
-python scripts/obsidian_writer.py ./output/paper/paper.analysis.json --vault ./output
 ```
 
-## Output
+Output: `output/<stem>/<stem>.json` + extracted figures in `output/<stem>/images/png/`
 
-- **Note**: `<vault_dir>/<name>.md`
-- **Analysis JSON**: `<output_dir>/<paper>/<paper>.analysis.json`
-- **Raw JSON**: `<output_dir>/<paper>/<paper>.json`
-- **Images**: `<output_dir>/<paper>/images/png/*.png`
+### Step 2: Agent Analysis → Analysis JSON
+
+The agent reads the parsed JSON, deeply analyzes the paper content, and saves:
+
+```bash
+# Agent writes: output/<stem>/<stem>.analysis.json
+```
+
+Required fields: title, authors, year, journal, abstract, summary, tldr, problem, method, result, architecture, innovations, experiments, thoughts, figure_notes, limitations, topics, aliases, related_papers
+
+**Figure embedding:** In the `architecture` and `experiments` fields, include explicit figure references like "如图1所示" or "Figure 1 shows". The renderer auto-detects these and embeds extracted PNGs as `![[Pasted image ...]]`.
+
+**Figure notes:** The `figure_notes` field should list the paper's key figures/tables with 1-2 sentence descriptions each. PDF-extracted images are auto-attached.
+
+### Step 3: Render → Markdown Note
+
+```bash
+python scripts/obsidian_writer.py ./output/<stem>/<stem>.analysis.json --vault "$PAPER_VAULT_DIR" --images-dir ./output/<stem>/images/png --attachments-dir "$PAPER_ATTACHMENTS_DIR"
+```
+
+Output: A complete Obsidian-compatible `.md` note with YAML frontmatter, auto-embedded figures, and structured sections.
+
+## Fetch from arXiv
+
+```bash
+python scripts/fetch_arxiv.py --query "transformer time series" --max 5 --days 7
+```
+
+## Analysis Style Guide
+
+- Output in the target language (Chinese by default), preserve English technical terms
+- **Architecture** is the most important section: detail each module (why this design, what problem it solves), include formulas in LaTeX `$...$`, use callouts for tricky concepts. Reference the paper's architecture diagram.
+- **Experiments**: datasets, baselines, key findings with critical numbers. Reference key result charts by figure number.
+- **figure_notes**: list the paper's key figures/tables, 1-2 sentence descriptions each
+- Thoughts: first person perspective, 1-2 points, can be empty
 
 ## Customization
 
@@ -84,10 +80,14 @@ python scripts/obsidian_writer.py ./output/paper/paper.analysis.json --vault ./o
 - **Analysis style guide**: Edit `references/style-guide.md`
 - **Journal abbreviations**: Edit `_simplify_journal()` in `scripts/obsidian_writer.py`
 
-## Agent CLI Adaptation
+## As an AI Agent Skill
 
-| Agent | Location | Notes |
-|-------|----------|-------|
-| **Claude Code** | `.claude/skills/paper.md` | Skill adapter in this repo |
-| **Kimi Code CLI** | `.kimi/skills/paper-assistant/` | Copy to `~/.kimi/skills/` |
-| **Other** | Agent's skills directory | Copy `SKILL.md` + `scripts/` + `assets/` + `references/` |
+After cloning, install the skill to your agent's skills directory:
+
+| Agent | Command |
+|---|---|
+| **Reasonix** | `mkdir -p .reasonix/skills/paper-assistant && cp SKILL.md .reasonix/skills/paper-assistant/` |
+| **Claude Code** | `cp SKILL.md .claude/skills/paper-assistant/SKILL.md` |
+| **Kimi Code** | `mkdir -p ~/.kimi/skills/paper-assistant && cp SKILL.md ~/.kimi/skills/paper-assistant/` |
+
+Then tell your agent: *"Analyze this paper: paper.pdf"*
