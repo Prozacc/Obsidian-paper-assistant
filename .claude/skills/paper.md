@@ -1,41 +1,58 @@
 ---
 name: paper
-description: 处理论文 PDF 或从 arXiv 抓取最新论文，生成 Obsidian 阅读笔记
+description: Process academic PDFs or fetch arXiv preprints and generate structured Markdown reading notes. Use when the user wants to (1) process a local PDF paper into a reading note, (2) fetch recent papers from arXiv, (3) extract figures and text from a PDF, or (4) generate a structured literature summary. Supports any Markdown-based note-taking workflow (Obsidian, Logseq, Notion, etc.).
 user_invocable: true
 ---
 
-# 论文笔记助手
+# Paper Assistant (Claude Code Adapter)
 
-根据用户意图，执行以下操作之一：
+This skill wraps the generic `paper-assistant` toolset for Claude Code.
 
-## 1. 处理单篇论文
-
-当用户提供一个 PDF 路径时：
+## Prerequisites
 
 ```bash
-cd D:/code/obsidian-paper-assistant && .venv/Scripts/python.exe tools/process_paper.py "<PDF路径>" --name "<笔记名>"
+cd <skill-root> && pip install -r requirements.txt
 ```
 
-- `<笔记名>` 格式为 `年份 简称`，如 `2025 TiMi`、`2024 Mamba`
-- 如果用户没给笔记名，从 PDF 文件名自动推断
+## Process a Local PDF
 
-## 2. 从 arXiv 抓取最新论文
-
-当用户要求找/抓最新论文时：
+When user provides a PDF path:
 
 ```bash
-cd D:/code/obsidian-paper-assistant && .venv/Scripts/python.exe tools/fetch_arxiv.py --max <数量> --days <天数>
+# Step 1: Parse PDF
+cd <skill-root> && python scripts/pdf_parser.py "<PDF_PATH>" --out ./output
 ```
 
-- 默认抓最近 7 天、最多 5 篇
-- 可用 `--query` 自定义搜索关键词
-- 用户说"找 3 篇" → `--max 3`，"最近两周" → `--days 14`
+Then read the generated JSON (`output/<stem>/<stem>.json`), use `build_prompt()` from `scripts/llm_analyzer.py` to get the analysis prompt, analyze the paper, and save the result as `output/<stem>/<stem>.analysis.json`.
 
-## 输出位置
+```bash
+# Step 3: Render note
+cd <skill-root> && python scripts/obsidian_writer.py ./output/<stem>/<stem>.analysis.json --vault ./output
+```
 
-- 笔记：`C:\Users\14870\Documents\Obsidian Vault\琅嬛记\02_Research\21_论文阅读笔记\`
-- 图片：`C:\Users\14870\Documents\Obsidian Vault\琅嬛记\99_Templates\Attachments\`
+- Note name format: `YYYY ShortName`, e.g. `2025 TiMi`, `2024 Mamba`
 
-## 笔记结构
+## Fetch from arXiv
 
-Frontmatter → 一句话总结 → 核心贡献（Problem/Method/Result）→ 模型架构（详解+公式+图片）→ 实验（简洁）→ 思考（简洁）
+When user asks to find/fetch recent papers:
+
+```bash
+cd <skill-root> && python scripts/fetch_arxiv.py --max <COUNT> --days <DAYS>
+```
+
+- Defaults: last 7 days, max 5 papers
+- Use `--query` for custom search terms
+- User says "find 3 papers" -> `--max 3`, "last two weeks" -> `--days 14`
+
+## Output Directories
+
+- Notes: `$PAPER_VAULT_DIR` (default: `./output`)
+- Images: `$PAPER_ATTACHMENTS_DIR` (default: `./output/attachments`)
+
+## Note Structure
+
+Frontmatter -> One-line summary -> Core contributions (Problem/Method/Result) -> Model architecture (detailed + formulas + figures) -> Experiments (concise) -> Thoughts (concise)
+
+## Adapting This Skill
+
+This file is a thin adapter. The core skill definition and all scripts are in the repository root (`SKILL.md` and `scripts/`). To update behavior, edit those files rather than this adapter.
