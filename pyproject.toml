@@ -14,14 +14,10 @@ authors = [
 ]
 keywords = ["pdf", "arxiv", "academic", "markdown", "notes", "obsidian"]
 classifiers = [
-    "Development Status :: 4 - Beta",
-    "Intended Audience :: Science/Research",
-    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
-    "Topic :: Scientific/Engineering",
 ]
 dependencies = [
     "pymupdf>=1.23.0",
@@ -33,10 +29,11 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "pytest>=8.0.0",
-    "mypy",
-    "ruff",
 ]
 
+[tool.setuptools.packages.find]
+include = ["scripts", "scripts.*"]
+
 [project.urls]
-Homepage = "https://github.com/yourusername/paper-assistant"
-Repository = "https://github.com/yourusername/paper-assistant"
+Homepage = "https://github.com/Prozacc/Obsidian-paper-assistant"
+Repository = "https://github.com/Prozacc/Obsidian-paper-assistant"
