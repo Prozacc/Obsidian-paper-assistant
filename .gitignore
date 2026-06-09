@@ -22,6 +22,18 @@ Thumbs.db
 .vscode/
 .idea/
 
+# Agent runtime data (keep skill adapters)
+.claude/cache/
+.claude/sessions/
+.claude/shell-snapshots/
+.claude/plans/
+.kimi/sessions/
+.kimi/logs/
+.kimi/credentials/
+.reasonix/sessions/
+.reasonix/usage.jsonl
+.reasonix/version-cache.json
+
 # Distribution/build
 build/
 dist/

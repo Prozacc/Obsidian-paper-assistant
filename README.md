@@ -5,6 +5,10 @@
 </p>
 
 <p align="center">
+  <strong>English</strong> &nbsp;·&nbsp; <a href="README.zh-CN.md">简体中文</a>
+</p>
+
+<p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License"></a>
   <a href="#"><img src="https://img.shields.io/badge/python-3.10+-green.svg" alt="Python"></a>
   <a href="#"><img src="https://img.shields.io/badge/code%20style-ruff-261230.svg" alt="Ruff"></a>
