@@ -475,8 +475,15 @@ def extract_images_pillow(
                 block_caption = _find_caption_near_bbox(page, pdf_bbox)
                 block_label = _guess_label_from_caption(block_caption)
 
-                # Add caption padding
-                caption_pad = int(120 * dpi / 300) if block_caption else int(20 * dpi / 300)
+                # Exclude caption area from the crop to avoid duplicating text
+                # already referenced in the note body.
+                if block_caption:
+                    cap_y0_pt = _caption_y0(page, pdf_bbox)
+                    if cap_y0_pt is not None:
+                        cap_y0_px = int(cap_y0_pt * scale) - int(5 * dpi / 300)
+                        if cap_y0_px > y0 + 20:
+                            y1 = cap_y0_px
+                caption_pad = int(8 * dpi / 300)
                 bottom = min(h, y1 + caption_pad)
 
                 figure_num += 1
@@ -609,7 +616,8 @@ def _extract_images_pymupdf(
 
                 block_caption = candidate["caption"]
                 block_label = candidate["figure_label"]
-                bottom_padding = 55 if block_caption else 8
+                # Small margin only — caption text is already referenced in the note
+                bottom_padding = 8
                 crop_rect = cluster_bbox + (-8, -8, 8, bottom_padding)
                 crop_rect &= page.rect
 
@@ -664,6 +672,40 @@ def _guess_label_from_caption(caption: str | None) -> str | None:
     match = re.search(r"(?i)\bfigure\s*(\d+)\b", caption)
     if match:
         return f"Figure {match.group(1)}"
+    return None
+
+
+def _caption_y0(page: fitz.Page, bbox: fitz.Rect) -> float | None:
+    """Return the y0 coordinate of the first caption line below *bbox*, or None."""
+    text_dict = page.get_text("dict")
+    expanded_x0 = bbox.x0 - 35
+    expanded_x1 = bbox.x1 + 35
+
+    def has_horizontal_overlap(line_bbox: fitz.Rect) -> bool:
+        overlap = min(expanded_x1, line_bbox.x1) - max(expanded_x0, line_bbox.x0)
+        if overlap > 0:
+            return True
+        center_x = (line_bbox.x0 + line_bbox.x1) / 2
+        return expanded_x0 <= center_x <= expanded_x1
+
+    for block in text_dict.get("blocks", []):
+        if block.get("type") != 0:
+            continue
+        for line in block.get("lines", []):
+            if not isinstance(line, dict):
+                continue
+            line_bbox = fitz.Rect(line["bbox"])
+            if (
+                line_bbox.y0 >= bbox.y1
+                and line_bbox.y0 <= bbox.y1 + 120
+                and has_horizontal_overlap(line_bbox)
+            ):
+                spans = line.get("spans", [])
+                text = " ".join(
+                    span.get("text", "") for span in spans if isinstance(span, dict)
+                )
+                if FIGURE_CAPTION_START_RE.search(text.strip()):
+                    return line_bbox.y0
     return None
 
 
@@ -870,14 +912,20 @@ def _extract_authors(lines_info: list[dict], title: str | None) -> list[str]:
 
 def _extract_abstract(text: str) -> str | None:
     match = re.search(
-        r"(?is)\babstract\b\s*[\-]?\s*(.+?)(?:\n\s*keywords\b|\n\s*\d+(?:\.\d+)?\s+[A-Z]|"
-        r"\n\s*introduction\b|\n\s*1\s+introduction\b|\n\s*I\s+INTRODUCTION\b|\Z)",
+        r"(?is)\babstract\b\s*[\-]?\s*(.+?)(?:\n\s*keywords\b|"
+        r"\n\s*(?:\d+(?:\.\d+)*\.?|I)\s+(?:introduction|background|related\s+work|method(?:ology)?|preliminaries)\b|"
+        r"\n\s*introduction\b|\Z)",
         text,
     )
     if not match:
         return None
     abstract = match.group(1).strip()
-    abstract = re.split(r"\n\s*\d+\s+[A-Z][a-z]", abstract, maxsplit=1)[0]
+    # arXiv first-page side labels can be interleaved into a two-column abstract.
+    abstract = re.sub(r"(?m)^\s*(?:19|20)\d{2}\s*$", "", abstract)
+    abstract = re.sub(r"(?m)^\s*(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)(?:\s+|$)", "", abstract)
+    abstract = re.sub(r"(?m)^\s*\d{1,2}\s+(?=[a-z])", "", abstract)
+    abstract = re.sub(r"(?m)^\s*\[[^\]]+\]\s*", "", abstract)
+    abstract = re.sub(r"(?m)^\s*arXiv:\S+\s*", "", abstract)
     return abstract or None
 
 

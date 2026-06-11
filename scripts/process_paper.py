@@ -17,12 +17,21 @@ import sys
 from pathlib import Path
 from typing import Sequence
 
+# Load .env if present (for local Obsidian paths etc.)
+try:
+    from dotenv import load_dotenv
+    _env_file = Path(__file__).resolve().parent.parent / ".env"
+    if _env_file.exists():
+        load_dotenv(_env_file)
+except ImportError:
+    pass
+
 # Allow running as `python scripts/process_paper.py` from skill root
 _SKILL_ROOT = Path(__file__).resolve().parent.parent
 if str(_SKILL_ROOT) not in sys.path:
     sys.path.insert(0, str(_SKILL_ROOT))
 
-# -- defaults --
+# -- defaults (override via .env or environment variables) --
 VAULT_DIR = Path(os.getenv("PAPER_VAULT_DIR", "./output"))
 ATTACHMENTS_DIR = Path(os.getenv("PAPER_ATTACHMENTS_DIR", "./output/attachments"))
 OUTPUT_DIR = Path(os.getenv("PAPER_OUTPUT_DIR", "./output"))

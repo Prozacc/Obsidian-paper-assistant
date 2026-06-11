@@ -1,0 +1,128 @@
+---
+title: "TiMi: Empower Time Series Transformers with Multimodal Mixture of Experts"
+type: paper-note
+status: active
+review_status: summarized
+created: "2026-06-10"
+updated: "2026-06-10"
+authors:
+  - Jiafeng Lin
+  - Yuxuan Wang
+  - Huakun Luo
+  - Zhongyi Pei
+  - Jianmin Wang
+year: "2026"
+journal: "arXiv preprint (arXiv:2602.21693v1)"
+citekey: ""
+zotero_link: ""
+source: "ai_summary"
+topic:
+  - Multimodal Time Series Forecasting
+  - Mixture of Experts
+  - Large Language Models
+  - Transformer
+project: []
+tags:
+  - paper
+  - 论文阅读
+  - "year/2026"
+aliases:
+  - TiMi
+related:
+  - PatchTST (Nie et al., 2022)
+  - iTransformer (Liu et al., 2024c)
+  - TimeXer (Wang et al., 2024)
+  - Time-LLM (Jin et al., 2023)
+  - Time-MMD (Liu et al., 2024a)
+  - AutoTimes (Liu et al., 2024d)
+  - Autoformer (Wu et al., 2021)
+  - TimeCMA (Liu et al., 2025)
+  - S2TS-LLM (Qin et al., 2025)
+  - Time-VLM (Zhong et al., 2025)
+---
+
+# 📖 TiMi: Empower Time Series Transformers with Multimodal Mixture of Experts
+
+> [!abstract] **摘要**
+> Multimodal time series forecasting has garnered significant attention for its potential to provide more accurate predictions than traditional single-
+
+---
+## 🚀 核心贡献 (TL;DR)
+*TiMi 利用冻结 LLM 从外源文本中推理未来趋势因果知识，通过 MMoE 即插即用模块注入 Transformer 时序模型，在 16 个多模态时序预测基准上全面取得 SOTA。*
+- **Problem:** 现有多模态时序预测方法面临两个核心挑战：
+
+1. **跨模态语义不对齐**： 与视觉-语言数据天然具有语义对应不同，时序-文本数据缺乏直接语义关联——文本描述的是对未来事件的预期（如新闻、政策公告），而非对当前观测值的描述。现有 Early Fusion（如 Time-LLM）和 Late Fusion（如 Time-MMD）方法依赖显式表示层对齐，效果有限。
+
+2. **LLM 因果推理能力未被充分利用**： 现有方法分为 Early Fusion 和 Late Fusion 两类，均依赖模态融合策略。然而文本中包含大量与预测无关的噪声信息，直接融合会引入干扰，且未能挖掘 LLM 从文本中推理未来趋势的因果知识。
+- **Method:** TiMi 提出 Non-Fusion Guidance 范式，不依赖模态融合，而是利用 LLM 的因果推理能力提取文本中的未来知识来指导时序预测。 整体框架包含三个核心组件：
+
+**1. 文本推理（Text Reasoning）：** 使用冻结的 LLM（Qwen2.5-7B-Instruct）处理外源文本 通过结构化 Prompt 从趋势（Trend）、频率（Frequency）、噪声（Noise）三个维度提取因果推断，经平均池化生成全局文本表征。
+
+**2. 时序嵌入（Series Embedding）：** 将历史序列切分为 N 个重叠 patch，通过可训练线性投影器映射为时序 token。
+
+**3. 多模态 MoE 模块（MMoE）：** 由 TMoE（文本引导 MoE）和 SMoE（时序感知 MoE）双塔结构组成，直接替换 Transformer 中的标准 FFN 层，将未来因果知识和历史趋势模式注入时序建模。
+- **Result:** 在 16 个真实世界多模态时序预测基准上全面超越现有方法：
+- TiMi 在 Time-MMD 9 个数据集上大部分取得最优，而其他多模态方法相比单模态提升微小
+- 在不规则多模态数据集 Time-IMM 上同样全面领先
+- MMoE 作为即插即用模块，在 PatchTST、TimeXer、Autoformer 上均带来显著提升
+- 更强的 LLM 带来更好效果，但即使较小的 LLM 也优于单模态基线
+- 对文本质量变化具有较强鲁棒性
+
+## 🧠 模型/算法架构
+> [!tip] 重点：关注模型输入输出形状、Loss Function、创新模块。
+
+### 1. 整体思路 现有多模态时序数据存在三种对齐关系。 现有方法分为 Early Fusion、Late Fusion 和 Non-Fusion 三类。TiMi 属于第三类——不依赖模态融合，而是将文本信息作为预测的指导信号。 TiMi 的数据流为：
+1. **输入**：历史序列 {1:L} \in \mathbb{R}^{L 	imes C}$ 和外部文本 $
+2. **文本推理**：冻结 LLM 提取趋势/频率/噪声因果推断
+3. **时序嵌入**：序列分割为 patch 并投影为 token
+4. **多模态注入**：MMoE 取代 FFN，TMoE 和 SMoE 分别路由
+5. **输出**：映射为未来 $ 步预测值
+
+### 2. 文本推理模块 论文设计了一套结构化 Prompt 框架，让 LLM 扮演时序分析师角色，从三个维度推断未来变化：
+- **趋势（Trend）**：预测未来走势方向（上升/下降/稳定/多变）
+- **频率（Frequency）**：预测未来周期性变化（高频/低频/稳定）
+- **噪声（Noise）**：预测未来波动特征（噪声增强/减弱/规律化） 展示了 Energy 数据集上的推理案例，即使输入文本存在噪声，LLM 仍能正确推断出未来趋势。
+
+### 3. MMoE 模块 MMoE 包含两个子模块，嵌入 Transformer 层中替换标准 FFN：
+
+1016\hat{h}^l = 	ext{LayerNorm}(h^{l-1} + 	ext{Self-Attention}(h^{l-1}))1016
+1016h^l = 	ext{LayerNorm}(\hat{h}^l + 	ext{MMoE}(\hat{h}^l, ar{H}))1016
+
+**TMoE（Text-informed MoE）：** 以文本表征 $ar{H}$ 作为 Router 输入，门控网络 \in \mathbb{R}^{M 	imes ar{D}}$ 生成路由权重，top-k 选择后加权组合共享 FFN 专家：
+1016s_{i,t} = 	ext{Softmax}_i(W_t ar{H}), \quad 	ext{TMoE}(h, ar{H}) = \sum_{i \in 	au_t} s_{i,t} 	ext{FFN}_i(h)1016
+
+**SMoE（Series-aware MoE）：** 将所有 patch token 沿隐藏维度拼接得到全局序列表征，门控网络 \in \mathbb{R}^{M 	imes (N 	imes D)}$ 路由：
+1016s_{i,s} = 	ext{Softmax}_i(W_s[h_1, \cdots, h_N]), \quad 	ext{SMoE}(h) = \sum_{i \in 	au_s} s_{i,s} 	ext{FFN}_i(h)1016
+
+- 无
+
+---
+## 📊 实验与结果
+**数据集：**
+- Time-MMD（9 个领域：Agriculture、Climate、Economy、Energy、Environment、Health(US)、Security、SocialGood、Traffic）
+- Time-IMM（7 个不规则多模态数据集：GDELT、RepoHealth、FNSPID、ClusterTrace、ILINet、CESNET、EPA-Air）
+
+**Baseline：**
+- 多模态方法：Time-MMD、AutoTimes、Time-LLM、GPT4TS、S2TS-LLM、Time-VLM、TimeCMA、IMM-TSF
+- Transformer 时序模型：TimeXer、iTransformer、PatchTST、Autoformer
+- CNN/Linear 方法：TimesNet、DLinear
+
+**主要结论：**
+- TiMi 在绝大部分数据集上取得最优，全面超越所有单模态和多模态基线
+- 现有多模态基线（AutoTimes、Time-MMD）相比单模态模型提升微小，而 TiMi 通过 LLM 因果推理实现了显著的多模态增益
+- MMoE 作为通用即插即用模块，在 PatchTST、TimeXer、Autoformer 三种骨干上均带来一致且显著的性能提升
+- 更强的 LLM（Qwen2.5-7B）带来最好的预测效果，但即使较小的 LLM（GPT-2、Qwen2.5-0.5B）也显著优于单模态基线
+- 消融实验验证了 TMoE 和 SMoE 两个模块的协同必要性，随机初始化 LLM 导致性能显著下降
+- TiMi 对文本质量变化（噪声、同义替换、不相关文本、误导性文本等）具有较强鲁棒性
+- SMoE 的专家路由呈现可解释的趋势依赖模式
+
+## 💡 个人思考与启发
+> [!quote] 这篇论文已经进入我的研究坐标系了
+
+（此处留白，待补充：方法论启发、领域判断、与已有工作的关联...）
+
+
+---
+## 🔗 参考文献与链接
+- **PDF 附件:** 
+- **代码链接:**

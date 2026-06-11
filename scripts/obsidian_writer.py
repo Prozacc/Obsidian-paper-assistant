@@ -61,12 +61,9 @@ def _slugify(text: str) -> str:
 
 
 def _format_bullets(items: Any) -> str:
-    """Format a list into Markdown bullet points.
-
-    If the input is an empty list, return a placeholder to avoid blank blocks.
-    """
+    """Format a list into Markdown bullet points."""
     if not items:
-        return "- 无"
+        return ""
     if isinstance(items, str):
         return f"- {items}"
     if not isinstance(items, list):
@@ -100,14 +97,22 @@ def _format_text(value: Any) -> str:
                 return _format_text(parsed)
         except (ValueError, SyntaxError):
             pass
-    return text if text else "（待补充）"
+    return text if text else ""
 
 
 def _format_yaml_list(items: list[str]) -> str:
     """Format a string list into YAML array format (without outer quotes)."""
     if not items:
-        return "  - "
+        return "  []"
     return "\n".join(f"  - {item}" for item in items)
+
+
+def _strip_section_label(text: str, label: str) -> str:
+    """Strip a label already supplied by the model; the template owns labels."""
+    if not text:
+        return text
+    pattern = rf"^\s*-?\s*\*\*{re.escape(label)}:\*\*\s*"
+    return re.sub(pattern, "", text, count=1, flags=re.IGNORECASE).strip()
 
 
 def _clean_abstract(text: str) -> str:
@@ -130,9 +135,23 @@ def _embed_figure_images(
     text: str,
     images_dir: Path | None,
     attachments_dir: Path | None = None,
-    max_images: int = 5,
+    only_figures: list[str] | None = None,
+    timestamp: str | None = None,
+    paper_name: str = "",
+    figure_captions: dict[str, str] | None = None,
 ) -> tuple[str, int]:
-    """Scan text for figure number references, copy images to attachments dir and insert references.
+    """Copy images to attachments dir and insert Obsidian embed references.
+
+    Args:
+        text: Markdown text to process.
+        images_dir: Directory containing extracted figure PNGs.
+        attachments_dir: Where to copy images for Obsidian linking.
+        only_figures: If provided, only embed these figure numbers (e.g. ["3", "4"]).
+                      If None, scan text for figure references (legacy behavior).
+        timestamp: Timestamp for fallback naming scheme.
+        paper_name: Short paper name for descriptive filenames (e.g. "TiMi").
+        figure_captions: Optional mapping of figure number -> caption text
+                         (derived from figure_notes). Used as blockquote caption.
 
     Returns (processed_text, number_of_embedded_images).
     """
@@ -140,40 +159,73 @@ def _embed_figure_images(
         return text, 0
 
     # Build figure_number -> file_path mapping
+    # Prefer base images (no _N suffix) over fragmented ones
     fig_map: dict[str, Path] = {}
+    fig_fragment_map: dict[str, Path] = {}  # fallback: fragmented images
     for img_file in sorted(images_dir.glob("*.png")):
         name = img_file.name.lower()
         m = re.search(r"figure[_\s-]*(\d+)", name)
         if m:
             fig_num = m.group(1)
-            if fig_num not in fig_map:
+            # Check if this is a fragment (ends with _N.png where N is a digit)
+            is_fragment = re.search(r"_\d+\.png$", name) is not None
+            if not is_fragment and fig_num not in fig_map:
                 fig_map[fig_num] = img_file
+            elif is_fragment and fig_num not in fig_fragment_map:
+                fig_fragment_map[fig_num] = img_file
+
+    # Fill in missing base images from fragments
+    for fig_num, path in fig_fragment_map.items():
+        if fig_num not in fig_map:
+            fig_map[fig_num] = path
 
     if not fig_map:
         return text, 0
 
-    # Find all figure numbers referenced in text (deduplicated, in order)
-    seen_figs: list[str] = []
-    for m in _FIG_REF_RE.finditer(text):
-        num = m.group(1)
-        if num in fig_map and num not in seen_figs:
-            seen_figs.append(num)
+    if only_figures is not None:
+        # Use explicit figure list from figure_notes
+        figs_to_embed = [f for f in only_figures if f in fig_map]
+    else:
+        # Legacy: scan text for figure references
+        seen_figs: list[str] = []
+        for m in _FIG_REF_RE.finditer(text):
+            num = m.group(1)
+            if num in fig_map and num not in seen_figs:
+                seen_figs.append(num)
+        figs_to_embed = seen_figs
 
-    if not seen_figs:
+    if not figs_to_embed:
         return text, 0
 
-    figs_to_embed = set(seen_figs[:max_images])
-
-    # Copy images to attachments directory
+    # Copy images to attachments directory with descriptive names
+    embed_name_map: dict[str, str] = {}  # fig_num -> filename
     if attachments_dir:
         attachments_dir.mkdir(parents=True, exist_ok=True)
+        ts = timestamp or datetime.now().strftime("%Y%m%d%H%M%S")
+        existing = {f.name for f in attachments_dir.glob("*.png")}
         for fig_num in figs_to_embed:
             src = fig_map[fig_num]
-            dst = attachments_dir / src.name
-            if not dst.exists():
-                shutil.copy2(str(src), str(dst))
+            # Use descriptive name: {paper_name}_fig{N}.png
+            if paper_name:
+                obsidian_name = f"{paper_name}_fig{fig_num}.png"
+            else:
+                obsidian_name = f"Pasted image {ts}_fig{fig_num}.png"
+            # Avoid overwriting existing files with different content
+            if obsidian_name in existing:
+                dst = attachments_dir / obsidian_name
+                if dst.exists() and dst.stat().st_size == src.stat().st_size:
+                    # Same content, no need to copy again
+                    embed_name_map[fig_num] = obsidian_name
+                    continue
+                # Different content, add a suffix
+                obsidian_name = f"{paper_name}_fig{fig_num}_{ts}.png"
+            dst = attachments_dir / obsidian_name
+            shutil.copy2(str(src), str(dst))
+            embed_name_map[fig_num] = obsidian_name
+            existing.add(obsidian_name)
 
-    # Insert image embeds after each reference (only once per figure)
+    # Insert Obsidian-style image embeds with optional caption
+    captions = figure_captions or {}
     inserted: set[str] = set()
     lines = text.split("\n")
     new_lines: list[str] = []
@@ -182,11 +234,353 @@ def _embed_figure_images(
         for m in _FIG_REF_RE.finditer(line):
             num = m.group(1)
             if num in figs_to_embed and num not in inserted:
-                img_path = fig_map[num]
-                new_lines.append(f"\n![[{img_path.name}]]\n")
+                obs_name = embed_name_map.get(num) or fig_map.get(num, Path()).name
+                caption = captions.get(num, "")
+                if caption:
+                    new_lines.append(f"\n> {caption}\n")
+                new_lines.append(f"\n![[{obs_name}]]\n")
                 inserted.add(num)
 
+    # Fallback: if no figure references were found in text, try to match
+    # remaining images to section headings based on caption keywords.
+    remaining = [f for f in figs_to_embed if f not in inserted]
+    if remaining:
+        # Strategy 1: Match figure captions to ### headings in text
+        # Build heading -> line_index mapping
+        heading_lines: list[tuple[int, str]] = []
+        for idx, line in enumerate(new_lines):
+            if line.startswith("### "):
+                heading_lines.append((idx, line))
+
+        # Build fig_num -> target heading mapping based on caption keywords
+        _heading_keywords = {
+            "整体": ["整体", "overview", "总体", "pipeline"],
+            "架构": ["架构", "architecture", "framework", "设计", "结构"],
+            "编码": ["编码", "encoding", "encoder", "推理", "reasoning", "prompt"],
+            "文本": ["文本", "text", "language", "llm"],
+            "路由": ["路由", "routing", "moe", "expert"],
+            "训练": ["训练", "training", "optim", "loss"],
+            "实验": ["实验", "experiment", "result", "ablation"],
+        }
+
+        fig_heading_map: dict[str, int | None] = {}  # fig_num -> heading line index
+        for fig_num in remaining:
+            caption = captions.get(fig_num, "").lower()
+            best_heading_idx = None
+            best_score = 0
+            for h_idx, h_text in heading_lines:
+                h_lower = h_text.lower()
+                score = 0
+                for category, keywords in _heading_keywords.items():
+                    if any(kw in caption for kw in keywords):
+                        if any(kw in h_lower for kw in keywords):
+                            score += 1
+                # Also check if heading text contains words from caption
+                caption_words = set(re.findall(r"[a-zA-Z]+", caption))
+                heading_words = set(re.findall(r"[a-zA-Z]+", h_lower))
+                score += len(caption_words & heading_words)
+                if score > best_score:
+                    best_score = score
+                    best_heading_idx = h_idx
+            fig_heading_map[fig_num] = best_heading_idx if best_score > 0 else None
+
+        # Insert images after their matched headings (at end of heading's section)
+        # First, collect which figures go after which heading
+        heading_inserts: dict[int, list[str]] = {}  # heading_idx -> [fig_nums]
+        unplaced: list[str] = []
+        for fig_num in remaining:
+            target = fig_heading_map.get(fig_num)
+            if target is not None:
+                heading_inserts.setdefault(target, []).append(fig_num)
+            else:
+                unplaced.append(fig_num)
+
+        # For each heading with matched figures, find the end of its section
+        # (next ### heading or end of text) and insert images before it
+        if heading_inserts:
+            # Rebuild new_lines with inserted images
+            final_lines: list[str] = []
+            for idx, line in enumerate(new_lines):
+                if idx in heading_inserts:
+                    # Find section end: next ### or end
+                    section_end = len(new_lines)
+                    for search_idx in range(idx + 1, len(new_lines)):
+                        if new_lines[search_idx].startswith("### "):
+                            section_end = search_idx
+                            break
+                    # Insert images just before section end (skip trailing blank lines)
+                    insert_pos = section_end
+                    while insert_pos > idx + 1 and not new_lines[insert_pos - 1].strip():
+                        insert_pos -= 1
+                    # Build insert block
+                    for fig_num in heading_inserts[idx]:
+                        obs_name = embed_name_map.get(fig_num) or fig_map.get(fig_num, Path()).name
+                        caption = captions.get(fig_num, "")
+                        if caption:
+                            final_lines.append(f"> {caption}")
+                        final_lines.append(f"![[{obs_name}]]")
+                        final_lines.append("")
+                        inserted.add(fig_num)
+                final_lines.append(line)
+            new_lines = final_lines
+
+        # Append any remaining unplaced figures at the end
+        for fig_num in unplaced:
+            obs_name = embed_name_map.get(fig_num) or fig_map.get(fig_num, Path()).name
+            caption = captions.get(fig_num, "")
+            if new_lines and new_lines[-1].strip():
+                new_lines.append("")
+            if caption:
+                new_lines.append(f"> {caption}")
+            new_lines.append(f"![[{obs_name}]]")
+            inserted.add(fig_num)
+
     return "\n".join(new_lines), len(inserted)
+
+
+def _normalize_numbered_lists(text: str) -> str:
+    """Convert numbered list items (1. 2. etc.) to bullet list items.
+
+    LLMs sometimes output numbered sub-lists in Problem/Method/Result,
+    but the user's manual notes consistently use dash bullets.
+    """
+    if not text:
+        return text
+    # Match lines starting with optional whitespace + number + dot + space
+    # e.g. "  1. **跨模态语义不对齐**：..." -> "  - **跨模态语义不对齐**：..."
+    text = re.sub(r"^(\s*)\d+\.\s+", r"\1- ", text, flags=re.MULTILINE)
+    return text
+
+
+def _ensure_paragraph_breaks(text: str) -> str:
+    """Ensure blank lines around block-level elements: headings, formulas, images.
+
+    This produces the clear visual separation seen in the user's manual notes.
+    """
+    if not text:
+        return text
+    # Blank line before ### headings (if not already preceded by blank)
+    text = re.sub(r"(?<!\n)\n(### )", r"\n\n\1", text)
+    # Blank line after ### headings (if not already followed by blank)
+    text = re.sub(r"(### .+)\n(?!\n)", r"\1\n\n", text)
+    # Blank line before $$ display math (if not already preceded by blank)
+    text = re.sub(r"(?<!\n)\n(\$\$)", r"\n\n\1", text)
+    # Blank line after $$ display math (if not already followed by blank)
+    text = re.sub(r"(\$\$)\n(?!\n)", r"\1\n\n", text)
+    # Blank line before Obsidian embed ![[
+    text = re.sub(r"(?<!\n)\n(!\[\[)", r"\n\n\1", text)
+    # Blank line after Obsidian embed ]]
+    text = re.sub(r"(\]\])\n(?!\n)", r"\1\n\n", text)
+    # Collapse excessive blank lines (max 1 blank = 2 newlines)
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    return text
+
+
+def _cleanup_figure_table_refs(text: str) -> str:
+    """Remove figure/table references from text while avoiding sentence concatenation issues.
+
+    Examples removed:
+    - "如图1所示", "如表2所示", "see Figure 3", "as shown in Table 4"
+    - "（如图1所示）", "，如图1所示，"
+    - "如图3(b)所示", "Fig. 2(a)"
+
+    This function is careful NOT to match figure references inside Obsidian
+    image embeds like ![[TiMi_fig3.png]].
+    """
+    if not text:
+        return text
+    # Protect Obsidian image embeds from being corrupted by figure ref cleanup.
+    # Strategy: temporarily replace image embed lines with placeholders,
+    # run cleanup, then restore them.
+    _embed_lines: dict[str, str] = {}
+    _counter = [0]
+    def _protect_embed(m: re.Match) -> str:
+        key = f"__OBSIDIAN_EMBED_{_counter[0]}__"
+        _embed_lines[key] = m.group(0)
+        _counter[0] += 1
+        return key
+    # Match full lines containing ![[...]] image embeds
+    text = re.sub(r"!\[\[[^\]]+\]\]", _protect_embed, text)
+
+    # Chinese references with surrounding punctuation — replace with a single space to avoid concatenation
+    # Supports sub-figure labels like "图3(b)所示"
+    text = re.sub(
+        r"[（(]?[，,、\s]*(?:如|见|参见|参考)?(?:图|表|Figure|Fig\.?|Table)\s*\d+(?:\([a-z]\))?[\s,，]*(?:所示|所见|见|中|里)?[）)]?[，,、]?",
+        " ",
+        text,
+        flags=re.IGNORECASE,
+    )
+    # English references with surrounding punctuation
+    text = re.sub(
+        r"[（(]?[，,、\s]*(?:as\s+shown\s+in|see|shown\s+in|in)\s+(?:Figure|Fig\.?|Table)\s*\d+(?:\([a-z]\))?[）)]?[，,、]?",
+        " ",
+        text,
+        flags=re.IGNORECASE,
+    )
+    # Clean up double punctuation and orphaned commas at line starts
+    text = re.sub(r"[，,、]\s*[，,、]", "，", text)
+    text = re.sub(r"\n\s*[，,、]\s*", "\n- ", text)
+    # Clean up multiple spaces
+    text = re.sub(r"  +", " ", text)
+
+    # Restore protected embed lines
+    for key, value in _embed_lines.items():
+        text = text.replace(key, value)
+
+    return text
+
+
+def _normalize_experiments_format(text: str) -> str:
+    """Normalize experiments section into the user's preferred compact inline format.
+
+    Converts LLM output like:
+        **数据集：**
+        - Item1
+        - Item2
+    Into:
+        - **数据集:** Item1, Item2
+
+    This matches the style of the user's manually curated notes (PatchTST, iTransformer).
+    """
+    if not text:
+        return text
+    # Pattern: bold label on its own line followed by bullet list
+    # Match: **label：**\n  - item1\n  - item2\n
+    def _collapse_label_bullets(match: re.Match) -> str:
+        label = match.group(1).rstrip("：:").strip()
+        items_block = match.group(2)
+        # Extract bullet items
+        items = re.findall(r"^\s*-\s*(.+)$", items_block, flags=re.MULTILINE)
+        if items:
+            items_text = "、".join(item.strip().rstrip("，。；,.;") for item in items if item.strip())
+            return f"- **{label}:** {items_text}"
+        return match.group(0)
+
+    # Match bold label line followed by one or more bullet lines
+    text = re.sub(
+        r"\*\*([^*]+[：:])\*\*\s*\n((?:\s*-\s+.+\n?)+)",
+        _collapse_label_bullets,
+        text,
+        flags=re.MULTILINE,
+    )
+    return text
+
+
+def _cleanup_experiments(text: str) -> str:
+    """Post-process experiments text to enforce style guide rules.
+
+    - Remove figure/table references
+    - Remove specific metric values (MSE=0.42, 12.3%, etc.)
+    - Normalize into compact inline format matching user's manual notes
+    """
+    if not text:
+        return text
+    text = _cleanup_figure_table_refs(text)
+    # Remove metric values like MSE=0.42, 12.3%, reduces by 5.2%
+    text = re.sub(r"(?:MSE|MAE|RMSE|MAPE|SMAPE)\s*[=≈]\s*\d+\.?\d*", "", text, flags=re.IGNORECASE)
+    # Remove percentage improvements (e.g. "12.3%", "提升5%") but NOT LaTeX like 10^{-4}
+    # Avoid matching percentages that are part of a range like "12-18%"
+    text = re.sub(r"(?<![-\d])\d+\.?\d*%(?![-\d}])", "", text)
+    text = re.sub(
+        r"(?:reduce|reduces|improve|improves|drop|drops|increase|increases)\s+(?:by|to)\s+\d+\.?\d*",
+        "",
+        text,
+        flags=re.IGNORECASE,
+    )
+    # Clean up extra whitespace
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    text = re.sub(r"  +", " ", text)
+    # Normalize into compact inline format (like user's manual notes)
+    text = _normalize_experiments_format(text)
+    return text.strip()
+
+
+def _cleanup_architecture(text: str) -> str:
+    """Post-process architecture text to enforce style guide rules.
+
+    Figure references are intentionally preserved so an embedded image remains
+    anchored to the sentence that explains why it matters.
+    """
+    if not text:
+        return text
+    # Protect Obsidian image embeds and their captions from being modified.
+    # Strategy: temporarily replace embed/caption blocks with placeholders.
+    _protect_map: dict[str, str] = {}
+    _counter = [0]
+    def _protect(m: re.Match) -> str:
+        key = f"__ARCH_PROTECT_{_counter[0]}__"
+        _protect_map[key] = m.group(0)
+        _counter[0] += 1
+        return key
+    # Protect lines that are image embeds or blockquote captions immediately before embeds
+    text = re.sub(r"(?:^> .+\n)?!\[\[[^\]]+\]\]", _protect, text, flags=re.MULTILINE)
+
+    # Convert question/tip callouts back to normal prose instead of dropping
+    # their content or allowing callouts to replace the explanation.
+    text = re.sub(r"^>\s*\[!(?:question|tip)\]\s*", "", text, flags=re.IGNORECASE | re.MULTILINE)
+    text = re.sub(r"^>\s?", "", text, flags=re.MULTILINE)
+    # Clean up extra whitespace
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    text = re.sub(r"  +", " ", text)
+
+    # Restore protected embed/caption blocks
+    for key, value in _protect_map.items():
+        text = text.replace(key, value)
+
+    return text.strip()
+
+
+def _select_abstract(*candidates: Any) -> str:
+    """Choose the most complete abstract candidate and clean parser artifacts."""
+    cleaned = [_clean_abstract(str(value)) for value in candidates if value]
+    cleaned = [value for value in cleaned if value and value != "（待补充）"]
+    if not cleaned:
+        return "Abstract not available"
+    return max(cleaned, key=len)
+
+
+def _cleanup_thoughts(text: str) -> str:
+    """Post-process thoughts to remove empty filler content.
+
+    - If thoughts only contains callouts or filler phrases, return empty string
+    """
+    if not text:
+        return text
+    stripped = text.strip()
+    # Known filler phrases that should be treated as empty
+    fillers = [
+        "这篇论文已经进入我的研究坐标系了",
+        "这篇论文写得很好",
+        "实验充分",
+        "good paper",
+        "well conducted",
+    ]
+    for filler in fillers:
+        if filler in stripped and len(stripped) < len(filler) + 50:
+            return ""
+    # If mostly just callouts with no real content
+    content_without_callouts = re.sub(r">\s*\[!\w+\].*?(?=\n\n|\n[^>]|\Z)", "", stripped, flags=re.DOTALL)
+    content_without_callouts = re.sub(r"\s+", "", content_without_callouts)
+    if len(content_without_callouts) < 20:
+        return ""
+    return text
+
+
+def _extract_fig_nums_from_notes(notes: list[str] | str) -> list[str]:
+    """Extract figure numbers mentioned in figure_notes entries.
+
+    Scans each note string for patterns like "Figure 3", "Fig. 4", "图5"
+    and returns deduplicated figure numbers in order of appearance.
+    """
+    if isinstance(notes, str):
+        notes = [notes]
+    seen: list[str] = []
+    for note in notes:
+        for m in _FIG_REF_RE.finditer(str(note)):
+            num = m.group(1)
+            if num not in seen:
+                seen.append(num)
+    return seen
 
 
 def _simplify_journal(journal: str) -> str:
@@ -231,12 +625,68 @@ def _render_template(template: str, variables: dict[str, str]) -> str:
     return pattern.sub(replacer, template)
 
 
+def _restore_latex_backslashes(text: str) -> str:
+    r"""Restore LaTeX backslashes lost during JSON parsing.
+
+    Some LLMs write ``\text``, ``\bar``, ``\hat`` etc. inside JSON strings
+    without escaping the backslash. When json.loads parses the string, ``\t``
+    becomes a tab character, ``\b`` becomes a backspace, etc. This function
+    restores those control characters back to their escaped forms so the
+    LaTeX commands are readable again.
+
+    Also fixes the common LLM hallucination where ``$$`` is written as a
+    standalone number (e.g. ``1016``, ``286``).
+    """
+    if not text:
+        return text
+    # Restore control chars that are almost certainly unintended in paper analysis text.
+    # NOTE: \n (newline) is NOT replaced — real line breaks are common and intentional.
+    text = text.replace("\t", "\\t")
+    text = text.replace("\b", "\\b")
+    text = text.replace("\f", "\\f")
+
+    # Fix LLM hallucination: standalone number -> $$
+    # Numbers that appear where $$ delimiters should be (formula boundaries).
+    # Matches 2-4 digit numbers NOT adjacent to other digits, in formula-like contexts:
+    #   - Before a LaTeX command: "286\hat" -> "$$\hat"
+    #   - After a closing paren/brace: "))286" or "}286" -> "))$$" or "}$$"
+    #   - At line start before math: "286h^l" -> "$$h^l"
+    text = re.sub(r"(?<![0-9$])\d{2,4}(?=\\[a-zA-Z])", "$$", text)   # 286\hat -> $$\hat
+    text = re.sub(r"(?<=[)\}])\d{2,4}(?![0-9])", "$$", text)         # ))286 -> ))$$  or  }286 -> }$$
+    text = re.sub(r"(?<![0-9$])\d{2,4}(?=[a-z_\^])", "$$", text)      # 286h^l -> $$h^l (but not $10^{-4}$)
+    return text
+
+
+def _fix_latex_escapes(text: str) -> str:
+    r"""Fix double-escaped LaTeX backslashes produced by some LLMs.
+
+    Some models output ``\\hat`` inside JSON strings, which after json.loads
+    becomes ``\hat`` (two literal backslashes). In Markdown we want a single
+    backslash for LaTeX commands like \hat, \mathbb, \operatorname, etc.
+
+    This function converts ``\\command`` -> ``\command`` while preserving
+    legitimate escaped sequences like ``\\`` (line break in some Markdown
+    flavours) and Windows paths.
+    """
+    if not text:
+        return text
+    # Match two backslashes followed by a LaTeX command letter (a-zA-Z)
+    # or common LaTeX special chars ({ } [ ] _ ^)
+    text = re.sub(r"\\\\([a-zA-Z]+\{)", r"\\\1", text)
+    text = re.sub(r"\\\\([a-zA-Z]+\[)", r"\\\1", text)
+    text = re.sub(r"\\\\([a-zA-Z]+\b)", r"\\\1", text)
+    # Also handle common math symbols that may be double-escaped
+    text = re.sub(r"\\\\([\{\}\[\]_^])", r"\\\1", text)
+    return text
+
+
 def render_markdown(
     analysis: dict[str, Any],
     source_pdf: str,
     analysis_json: str,
     images_dir: str | Path | None = None,
     attachments_dir: str | Path | None = None,
+    paper_json: dict[str, Any] | None = None,
 ) -> str:
     """Render Markdown from analysis JSON.
 
@@ -260,27 +710,129 @@ def render_markdown(
 
     summary = _format_text(analysis.get("summary"))
     tldr = _format_text(analysis.get("tldr"))
-    problem = _format_text(analysis.get("problem"))
-    method = _format_text(analysis.get("method"))
-    result = _format_text(analysis.get("result"))
+    problem = _strip_section_label(_format_text(analysis.get("problem")), "Problem")
+    method = _strip_section_label(_format_text(analysis.get("method")), "Method")
+    result = _strip_section_label(_format_text(analysis.get("result")), "Result")
     architecture = _format_text(analysis.get("architecture"))
-    innovations = _format_bullets(analysis.get("innovations"))
+    innovation_items = analysis.get("innovations")
+    innovation_bullets = _format_bullets(innovation_items)
+    innovations = f"### 关键创新\n{innovation_bullets}" if innovation_bullets else ""
     experiments = _format_text(analysis.get("experiments"))
     thoughts = _format_text(analysis.get("thoughts"))
-    figure_notes = _format_bullets(analysis.get("figure_notes"))
+    figure_notes_raw = analysis.get("figure_notes", [])
+    figure_notes = _format_bullets(figure_notes_raw)
 
-    # Auto-embed images: scan text for figure references, copy to attachments and insert
+    # Restore LaTeX backslashes lost to JSON control-char parsing and fix double-escapes
+    architecture = _restore_latex_backslashes(architecture)
+    architecture = _fix_latex_escapes(architecture)
+    experiments = _restore_latex_backslashes(experiments)
+    experiments = _fix_latex_escapes(experiments)
+    problem = _restore_latex_backslashes(problem)
+    problem = _fix_latex_escapes(problem)
+    method = _restore_latex_backslashes(method)
+    method = _fix_latex_escapes(method)
+    result = _restore_latex_backslashes(result)
+    result = _fix_latex_escapes(result)
+
+    # Embed images inline in architecture/experiments text (like iTransformer notes).
+    # MUST run BEFORE _cleanup_architecture because cleanup removes figure references.
     _img_dir = Path(images_dir) if images_dir else None
     _att_dir = Path(attachments_dir) if attachments_dir else None
-    architecture, _ = _embed_figure_images(architecture, _img_dir, _att_dir)
-    experiments, _ = _embed_figure_images(experiments, _img_dir, _att_dir)
+    _ts = datetime.now().strftime("%Y%m%d%H%M%S")
+
+    # Extract paper short name for descriptive image filenames
+    _paper_name = ""
+    if ":" in str(title):
+        _paper_name = str(title).split(":", 1)[0].strip()
+    elif str(title).split():
+        _paper_name = str(title).split()[0]
+    # Clean paper name for filename safety
+    _paper_name = re.sub(r"[^a-zA-Z0-9]", "", _paper_name)
+
+    # Build figure_captions from figure_notes
+    _fig_captions: dict[str, str] = {}
+    for note_item in (figure_notes_raw if isinstance(figure_notes_raw, list) else []):
+        note_str = str(note_item)
+        for m in _FIG_REF_RE.finditer(note_str):
+            fig_num = m.group(1)
+            if fig_num not in _fig_captions:
+                # Use the first sentence of the figure note as caption
+                caption_text = note_str.split("：", 1)[-1] if "：" in note_str else note_str.split(":", 1)[-1] if ":" in note_str else note_str
+                caption_text = caption_text.strip().rstrip("。.")
+                # Truncate long captions
+                if len(caption_text) > 100:
+                    caption_text = caption_text[:100] + "…"
+                _fig_captions[fig_num] = caption_text
+
+    selected_figures = _extract_fig_nums_from_notes(figure_notes_raw)[:5]
+    if not selected_figures:
+        selected_figures = []
+        for match in _FIG_REF_RE.finditer(f"{architecture}\n{experiments}"):
+            fig_num = match.group(1)
+            if fig_num not in selected_figures:
+                selected_figures.append(fig_num)
+            if len(selected_figures) == 5:
+                break
+    # Classify figures into architecture vs experiments based on:
+    # 1. Explicit figure references in text
+    # 2. Figure_notes content matching (architecture-related keywords)
+    architecture_figures = [
+        fig for fig in selected_figures if re.search(rf"(?:图|Figure|Fig\.?)[\s._-]*{re.escape(fig)}(?!\d)", architecture, re.IGNORECASE)
+    ]
+    experiment_figures = [
+        fig for fig in selected_figures if re.search(rf"(?:图|Figure|Fig\.?)[\s._-]*{re.escape(fig)}(?!\d)", experiments, re.IGNORECASE)
+    ]
+    # If no explicit references in architecture text, use figure_notes heuristics:
+    # Architecture-related keywords in figure_notes → architecture section
+    _arch_keywords = ["架构", "整体", "模块", "模型", "路由", "设计", "结构", "pipeline", "framework",
+                      "architecture", "routing", "design", "module", "overview"]
+    unassigned = [fig for fig in selected_figures if fig not in architecture_figures and fig not in experiment_figures]
+    for fig in unassigned:
+        caption = _fig_captions.get(fig, "").lower()
+        if any(kw in caption for kw in _arch_keywords):
+            architecture_figures.append(fig)
+        else:
+            experiment_figures.append(fig)
+    # If architecture has no figures but experiments does, put first unassigned into architecture
+    if not architecture_figures and unassigned:
+        architecture_figures.append(unassigned.pop(0))
+        experiment_figures = [f for f in experiment_figures if f != unassigned[0]] if unassigned else experiment_figures
+    architecture, _ = _embed_figure_images(
+        architecture, _img_dir, _att_dir, only_figures=architecture_figures,
+        timestamp=_ts, paper_name=_paper_name, figure_captions=_fig_captions,
+    )
+    experiments, _ = _embed_figure_images(
+        experiments, _img_dir, _att_dir, only_figures=experiment_figures,
+        timestamp=_ts, paper_name=_paper_name, figure_captions=_fig_captions,
+    )
+
+    # Post-process to enforce style guide rules (last line of defense)
+    problem = _normalize_numbered_lists(problem)
+    method = _normalize_numbered_lists(method)
+    result = _normalize_numbered_lists(result)
+    problem = _cleanup_figure_table_refs(problem)
+    method = _cleanup_figure_table_refs(method)
+    result = _cleanup_figure_table_refs(result)
+    experiments = _cleanup_experiments(experiments)
+    architecture = _cleanup_architecture(architecture)
+    architecture = _ensure_paragraph_breaks(architecture)
+    thoughts = _cleanup_thoughts(thoughts)
+    if not thoughts.strip():
+        thoughts = "（待补充）"
     limitations = _format_bullets(analysis.get("limitations"))
 
-    # Prefer raw abstract, fallback to LLM summary
-    abstract_raw = analysis.get("abstract", "")
-    # Clean PDF parsing artifacts (e.g. "Jan\n" prefix, hyphenation app-\nlications)
-    abstract_cleaned = _clean_abstract(abstract_raw)
-    abstract_display = abstract_cleaned if abstract_cleaned else summary
+    # Prefer raw abstract, fallback to LLM summary, then to original paper JSON abstract
+    paper_abstract = str(paper_json.get("abstract", "")) if paper_json else ""
+    abstract_display = _select_abstract(summary, analysis.get("abstract", ""), paper_abstract)
+
+    reference_items: list[str] = []
+    pdf_link = str(analysis.get("pdf_url") or analysis.get("url") or "").strip()
+    code_link = str(analysis.get("code_url") or "").strip()
+    if pdf_link:
+        reference_items.append(f"- **论文链接:** {pdf_link}")
+    if code_link:
+        reference_items.append(f"- **代码链接:** {code_link}")
+    reference_links = "\n".join(reference_items) if reference_items else "（暂无）"
 
     variables = {
         "title": str(title),
@@ -305,12 +857,14 @@ def render_markdown(
         "figure_notes": figure_notes,
         "limitations": limitations,
         "desktopURI": "",
+        "reference_links": reference_links,
         "exportDate": current_date,
         "topics": _format_yaml_list(analysis.get("topics", [])),
         "aliases": _format_yaml_list(analysis.get("aliases", [])),
         "related_papers": _format_yaml_list(analysis.get("related_papers", [])),
     }
-    return _render_template(template, variables)
+    markdown = _render_template(template, variables)
+    return re.sub(r"\n{3,}", "\n\n", markdown).rstrip() + "\n"
 
 
 def write_obsidian_note(
@@ -342,16 +896,39 @@ def write_obsidian_note(
         if candidate.is_dir():
             images_dir = candidate
 
+    # Default attachments directory to vault_dir so images are actually copied
+    if attachments_dir is None:
+        attachments_dir = vault_dir
+
+    # Load original paper JSON for abstract fallback
+    # e.g. TiMi.analysis.json -> TiMi.json (with_suffix(".json") alone
+    # would not work because the stem already contains a dot)
+    paper_json: dict[str, Any] | None = None
+    paper_json_path = analysis_json_path.with_suffix("").with_suffix(".json")
+    if paper_json_path.exists() and paper_json_path != analysis_json_path:
+        paper_json = load_json(paper_json_path)
+
     markdown = render_markdown(
         analysis=analysis,
         source_pdf=source_pdf,
         analysis_json=str(analysis_json_path),
         images_dir=images_dir,
         attachments_dir=attachments_dir,
+        paper_json=paper_json,
     )
 
     title = analysis.get("title") or analysis.get("paper") or analysis_json_path.stem
-    safe_name = note_name or _slugify(str(title))
+    if note_name:
+        safe_name = note_name
+    else:
+        # Format: "YYYY ModelName" — extract year + model abbreviation from title
+        year = str(analysis.get("year", "")).strip()
+        # Take the part BEFORE the colon (model name) or the first word
+        if ":" in str(title):
+            abbr = str(title).split(":", 1)[0].strip()
+        else:
+            abbr = str(title).split()[0] if str(title).split() else "paper"
+        safe_name = f"{year} {abbr}" if year else abbr
     note_path = vault_dir / f"{safe_name}.md"
     note_path.write_text(markdown, encoding="utf-8")
 

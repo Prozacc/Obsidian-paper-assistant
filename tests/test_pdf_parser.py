@@ -12,6 +12,7 @@ from scripts.pdf_parser import (  # noqa: E402
     _clean_lines,
     _cluster_bboxes,
     _estimate_body_font_size,
+    _extract_abstract,
     _is_likely_figure_region,
     _is_tiny_graphic_region,
     _is_valid_heading,
@@ -21,6 +22,26 @@ from scripts.pdf_parser import (  # noqa: E402
     _slugify,
 )
 from scripts.obsidian_writer import _simplify_journal  # noqa: E402
+
+
+# ----------------------------------------------------------------------- #
+# _extract_abstract
+# ----------------------------------------------------------------------- #
+
+def test_extract_abstract_does_not_stop_at_arxiv_year():
+    text = """Abstract
+First part of the abstract ends with single-
+2026
+modality models and continues here.
+Feb
+25 fluence on forecasting.
+1. Introduction
+Body text.
+"""
+    result = _extract_abstract(text)
+    assert result is not None
+    assert "modality models and continues here" in result
+    assert "Body text" not in result
 
 
 # ----------------------------------------------------------------------- #
